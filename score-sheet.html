@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Score Sheet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 0;
+            color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        @media print {
+            html, body { overflow: visible !important; }
+            body { background: #fff; padding: 0; }
+            .sheet-wrapper { overflow: visible !important; }
+            .sheet { box-shadow: none; padding: 1rem; transform: none !important; overflow: visible !important; }
+        }
+        .sheet-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sheet {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 540px;
+            height: auto;
+            background: #fff;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+            transform-origin: center center;
+        }
+        .section {
+            margin-bottom: 0.5rem;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            flex: 1;
+            min-height: 0;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 0;
+            text-align: center;
+            min-width: 0;
+            position: relative;
+        }
+        /* Cell height = width of Round columns (square cells) */
+        .square-cell {
+            width: 1px;
+            min-width: 2rem;
+            min-height: 3rem;
+        }
+        /* Round cells: fixed height so W selection doesn't expand and cut off visitor section */
+        td.square-cell:nth-child(n+3):not(:last-child) {
+            height: 3rem;
+            min-height: 3rem;
+            max-height: 3rem;
+        }
+        .round-cell-inner {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 100%;
+            min-height: 0;
+            max-height: 100%;
+            padding: 0 1px;
+            overflow: hidden;
+        }
+        .round-cell-inner .rd-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            min-height: 0;
+            font-size: 0.8rem;
+            text-align: center;
+            text-align-last: center;
+            z-index: 0;
+        }
+        .round-cell-inner select {
+            min-height: 0;
+            font-size: 0.8rem;
+            padding: 0 0.1rem;
+            text-align: center;
+            text-align-last: center;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .round-cell-inner .shape-input {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            font-size: 0.5rem;
+            min-height: 0;
+            display: none;
+            z-index: 1;
+        }
+        .round-cell-inner .shape-input.shape-visible {
+            display: block;
+        }
+        .fargo-col {
+            width: 2.8rem;
+            min-width: 2.8rem;
+            text-align: center;
+        }
+        .player-col {
+            width: 22%;
+            text-align: center;
+        }
+        .rd-col, .total-col {
+            width: 10%;
+        }
+        th {
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: #fff;
+            text-align: center;
+        }
+        .round-header-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+        .round-header-wrap .round-label {
+            display: block;
+            font-size: 0.9rem;
+        }
+        .round-header-wrap .round-num {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            height: 100%;
+            min-height: 1rem;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: inherit;
+            padding: 0.25rem;
+        }
+        input:focus, select:focus {
+            outline: 1px solid #0066cc;
+            outline-offset: -1px;
+        }
+        .player-col input {
+            text-align: center;
+        }
+        .fargo-col input,
+        .player-col input,
+        .row-total,
+        .round-total,
+        .running-total,
+        .total-fargo-input,
+        .avg-fargo-input {
+            font-size: 0.8rem;
+        }
+        .total-cell {
+            background: #f9f9f9;
+            font-weight: 500;
+        }
+        .total-cell input {
+            background: transparent;
+            font-weight: 500;
+        }
+        .section-divider {
+            border: none;
+            border-top: 4px solid #333;
+            margin: 0.5rem 0;
+        }
+        .race-to-cell {
+            border: 1px solid #333;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+        .race-to-cell .race-to-input {
+            font-size: 0.8rem;
+        }
+        .summary-row .summary-label {
+            font-size: 0.8rem;
+            text-align: left;
+            padding-left: 0.5rem;
+            font-weight: 500;
+        }
+        .summary-row .summary-label.round-running {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 0.5rem;
+        }
+        .summary-row .square-cell {
+            text-align: center;
+        }
+        .summary-row .square-cell {
+            padding: 0.15rem;
+        }
+        .summary-row input {
+            width: 100%;
+            min-height: 1rem;
+        }
+        /* Remove left grid line and all horizontal lines on Fargo column for rows 7-10 (Round Total through Avg Fargo) */
+        .summary-row-edges td:first-child {
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+        }
+        /* Remove left, top, bottom, right borders of empty cells after Total Fargo and Avg Fargo values */
+        .summary-row-edges td.summary-rest {
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-right: none;
+        }
+        .save-section {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .save-btn {
+            padding: 0.35rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid #333;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .save-btn:hover {
+            background: #f0f0f0;
+        }
+        /* Home: row colors for round columns only (not Total) */
+        #home-table tr[data-row="0"] td:nth-child(n+3):not(:last-child) { background-color: #FFFFCC; }
+        #home-table tr[data-row="1"] td:nth-child(n+3):not(:last-child) { background-color: #E8E8E8; }
+        #home-table tr[data-row="2"] td:nth-child(n+3):not(:last-child) { background-color: #CCCCFF; }
+        #home-table tr[data-row="3"] td:nth-child(n+3):not(:last-child) { background-color: #CCFFCC; }
+        #home-table tr[data-row="4"] td:nth-child(n+3):not(:last-child) { background-color: #FFCCCC; }
+        /* Visitor: shifting colors per player row - yellow, red, green, blue, gray by round */
+        #visitor-table tr[data-row="0"] td:nth-child(3) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(4) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(5) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(6) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="0"] td:nth-child(7) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="1"] td:nth-child(3) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="1"] td:nth-child(4) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(5) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(6) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(7) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="2"] td:nth-child(3) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="2"] td:nth-child(4) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="2"] td:nth-child(5) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="2"] td:nth-child(6) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="2"] td:nth-child(7) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(3) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(4) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="3"] td:nth-child(5) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="3"] td:nth-child(6) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(7) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(3) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(4) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(5) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="4"] td:nth-child(6) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="4"] td:nth-child(7) { background-color: #FFFFCC; }
+        .cell-b {
+            position: absolute;
+            top: 0;
+            right: 0.15rem;
+            font-weight: bold;
+            font-size: 0.45em;
+        }
+        .sheet-header {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="sheet-wrapper">
+    <div class="sheet">
+        <div class="sheet-header">Richard Cranium Official Score Sheet</div>
+        <!-- Home Section -->
+        <div class="section">
+            <div class="section-title">Home</div>
+            <table id="home-table">
+                <thead>
+                    <tr>
+                        <th class="fargo-col square-cell">Fargo</th>
+                        <th class="player-col square-cell">Player</th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">1</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">2</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">3</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">4</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">5</span></span></th>
+                        <th class="total-col square-cell">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-row="0">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="1">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="2">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="3">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="4">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Round Total</td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Running Total</td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Total Fargo</td>
+                        <td class="square-cell"><input type="text" class="total-fargo-input" readonly></td>
+                        <td colspan="5" class="square-cell summary-rest"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Avg Fargo</td>
+                        <td class="square-cell"><input type="text" class="avg-fargo-input" readonly></td>
+                        <td colspan="3" class="square-cell summary-rest"></td>
+                        <td class="square-cell race-to-cell">Race To</td>
+                        <td class="square-cell race-to-cell"><input type="number" class="race-to-input" min="1" step="1"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Visitor Section - inverse B: Round 1,3 all B; Round 5 players 2,4 only -->
+        <div class="section">
+            <div class="section-title">Visitor</div>
+            <table id="visitor-table">
+                <thead>
+                    <tr>
+                        <th class="fargo-col square-cell">Fargo</th>
+                        <th class="player-col square-cell">Player</th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">1</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">2</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">3</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">4</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">5</span></span></th>
+                        <th class="total-col square-cell">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-row="0">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="1">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="2">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="3">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="4">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><input type="text" class="player-input"></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Round Total</td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Running Total</td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="running-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Total Fargo</td>
+                        <td class="square-cell"><input type="text" class="total-fargo-input" readonly></td>
+                        <td colspan="5" class="square-cell summary-rest"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Avg Fargo</td>
+                        <td class="square-cell"><input type="text" class="avg-fargo-input" readonly></td>
+                        <td colspan="3" class="square-cell summary-rest"></td>
+                        <td class="square-cell race-to-cell">Race To</td>
+                        <td class="square-cell race-to-cell"><input type="number" class="race-to-input" min="1" step="1"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="save-section">
+            <button type="button" class="save-btn" id="share-btn">Share</button>
+            <button type="button" class="save-btn" id="save-excel-btn">Save as Excel</button>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function updateTable(table) {
+            const tbody = table.querySelector('tbody');
+            const playerRows = tbody.querySelectorAll('tr[data-row]');
+
+            // Update row totals
+            playerRows.forEach(row => {
+                const rdInputs = row.querySelectorAll('.rd-input');
+                const totalInput = row.querySelector('.row-total');
+                let sum = 0;
+                rdInputs.forEach(select => {
+                    const val = parseInt(select.value, 10);
+                    sum += isNaN(val) ? 0 : val;
+                });
+                totalInput.value = sum > 0 ? sum : '';
+            });
+
+            // Update Round Total row (cols 0-4 = RD1-5 sums, col 5 = Total sum)
+            const roundTotals = tbody.querySelectorAll('.round-total');
+            for (let col = 0; col < 6; col++) {
+                let sum = 0;
+                playerRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const cellIdx = col + 2;
+                    if (cells[cellIdx]) {
+                        const select = cells[cellIdx].querySelector('.rd-input');
+                        const totalInput = cells[cellIdx].querySelector('.row-total');
+                        const val = col < 5
+                            ? (select ? parseInt(select.value, 10) : 0)
+                            : parseInt(totalInput?.value, 10);
+                        sum += isNaN(val) ? 0 : val;
+                    }
+                });
+                roundTotals[col].value = sum > 0 ? sum : '';
+            }
+
+            // Running Total = cumulative from Round Total (cols 0-4 per round, col 5 = grand total)
+            const runningTotals = tbody.querySelectorAll('.running-total');
+            let cumul = 0;
+            for (let i = 0; i < 5; i++) {
+                const val = parseInt(roundTotals[i].value, 10);
+                cumul += isNaN(val) ? 0 : val;
+                runningTotals[i].value = cumul > 0 ? cumul : '';
+            }
+            // Col 5 (Total): sum of Round Total cols 0-4 (= cumulative through round 5)
+            const totalRoundSum = [0, 1, 2, 3, 4].reduce((acc, i) => {
+                const v = parseInt(roundTotals[i].value, 10);
+                return acc + (isNaN(v) ? 0 : v);
+            }, 0);
+            runningTotals[5].value = totalRoundSum > 0 ? totalRoundSum : '';
+
+            // Total Fargo and Avg Fargo from player Fargo inputs
+            const fargoInputs = tbody.querySelectorAll('.fargo-input');
+            let totalFargo = 0;
+            let count = 0;
+            fargoInputs.forEach(input => {
+                const val = parseInt(input.value, 10);
+                if (!isNaN(val)) {
+                    totalFargo += val;
+                    count++;
+                }
+            });
+            const totalFargoInput = tbody.querySelector('.total-fargo-input');
+            const avgFargoInput = tbody.querySelector('.avg-fargo-input');
+            if (totalFargoInput) totalFargoInput.value = count > 0 ? totalFargo : '';
+            if (avgFargoInput) avgFargoInput.value = count > 0 ? Math.round(totalFargo / count) : '';
+        }
+
+        const homeTable = document.getElementById('home-table');
+        const visitorTable = document.getElementById('visitor-table');
+        let syncingInverse = false;
+
+        function getCorrespondingSelect(sourceSelect, sourceTable) {
+            const sourceRow = sourceSelect.closest('tr[data-row]');
+            if (!sourceRow) return null;
+            const rowIdx = parseInt(sourceRow.getAttribute('data-row'), 10);
+            const cells = sourceRow.querySelectorAll('td');
+            const sourceCell = sourceSelect.closest('td');
+            let colIdx = -1;
+            for (let i = 0; i < cells.length; i++) {
+                if (cells[i] === sourceCell) { colIdx = i; break; }
+            }
+            if (colIdx < 2 || colIdx > 6) return null;
+            const otherTable = sourceTable.id === 'home-table' ? visitorTable : homeTable;
+            const otherRows = otherTable.querySelectorAll('tr[data-row]');
+            const otherRow = otherRows[rowIdx];
+            if (!otherRow) return null;
+            const otherCells = otherRow.querySelectorAll('td');
+            const otherCell = otherCells[colIdx];
+            return otherCell ? otherCell.querySelector('.rd-input') : null;
+        }
+
+        function updateShapeVisibility(rdSelect) {
+            const cellInner = rdSelect.closest('.round-cell-inner');
+            if (!cellInner) return;
+            const shapeInput = cellInner.querySelector('.shape-input');
+            if (!shapeInput) return;
+            if (rdSelect.value === '1') {
+                shapeInput.classList.add('shape-visible');
+            } else {
+                shapeInput.classList.remove('shape-visible');
+                shapeInput.value = '';
+            }
+        }
+
+        function syncInverseWL(sourceSelect, sourceTable) {
+            const otherSelect = getCorrespondingSelect(sourceSelect, sourceTable);
+            if (!otherSelect || syncingInverse) return;
+            const val = sourceSelect.value;
+            syncingInverse = true;
+            if (val === '') otherSelect.value = '';
+            else if (val === '1') otherSelect.value = '0';
+            else if (val === '0') otherSelect.value = '1';
+            updateShapeVisibility(sourceSelect);
+            updateShapeVisibility(otherSelect);
+            updateTable(visitorTable);
+            updateTable(homeTable);
+            syncingInverse = false;
+        }
+
+        [homeTable, visitorTable].forEach(table => {
+            table.addEventListener('input', (e) => {
+                if (!syncingInverse) {
+                    updateTable(table);
+                }
+            });
+            table.addEventListener('change', (e) => {
+                if (syncingInverse) return;
+                if (e.target.classList.contains('rd-input')) {
+                    syncInverseWL(e.target, table);
+                    updateShapeVisibility(e.target);
+                }
+                updateTable(table);
+            });
+        });
+
+        document.querySelectorAll('.rd-input').forEach(rd => updateShapeVisibility(rd));
+
+        function getRoundValue(cell) {
+            const rdSelect = cell.querySelector('.rd-input');
+            if (!rdSelect) return '';
+            const v = rdSelect.value;
+            if (v === '1') return 'W';
+            if (v === '0') return 'L';
+            return '';
+        }
+        function getShapeValue(cell) {
+            const shapeSelect = cell.querySelector('.shape-input');
+            if (!shapeSelect || !shapeSelect.classList.contains('shape-visible')) return '';
+            const v = shapeSelect.value;
+            if (v === 'break-run') return 'BR';
+            if (v === 'table-run') return 'TR';
+            return '';
+        }
+        function escapeCSV(val) {
+            const s = String(val ?? '');
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+        function saveAsExcel() {
+            const lines = [];
+            const tables = [document.getElementById('home-table'), document.getElementById('visitor-table')];
+            const titles = ['Home', 'Visitor'];
+            tables.forEach((table, idx) => {
+                lines.push(titles[idx]);
+                const tbody = table.querySelector('tbody');
+                const headers = ['Fargo', 'Player', 'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Total'];
+                lines.push(headers.map(escapeCSV).join(','));
+                tbody.querySelectorAll('tr[data-row]').forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const fargo = cells[0]?.querySelector('.fargo-input')?.value ?? '';
+                    const player = cells[1]?.querySelector('.player-input')?.value ?? '';
+                    const rdCells = [cells[2], cells[3], cells[4], cells[5], cells[6]];
+                    const rdVals = rdCells.map(c => {
+                        const r = getRoundValue(c);
+                        const s = getShapeValue(c);
+                        return s ? r + ' (' + s + ')' : r;
+                    });
+                    const total = cells[7]?.querySelector('.row-total')?.value ?? '';
+                    lines.push([fargo, player, ...rdVals, total].map(escapeCSV).join(','));
+                });
+                tbody.querySelectorAll('.summary-row').forEach((row, i) => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length < 3) return;
+                    const label = cells[1]?.textContent?.trim() ?? '';
+                    const vals = [];
+                    for (let c = 2; c < cells.length; c++) {
+                        const inp = cells[c].querySelector('input');
+                        vals.push(inp ? inp.value : cells[c].textContent?.trim() ?? '');
+                    }
+                    lines.push([escapeCSV(label), ...vals.map(escapeCSV)].join(','));
+                });
+                lines.push('');
+            });
+            const csv = '\uFEFF' + lines.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+        function shareAsImage() {
+            const sheet = document.querySelector('.sheet');
+            if (!sheet) return;
+            if (typeof html2canvas === 'undefined') {
+                alert('Loading... Please try again in a moment.');
+                return;
+            }
+            var scale = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 2;
+            html2canvas(sheet, {
+                scale: scale,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                onclone: function(clonedDoc, el) {
+                    el.style.position = 'relative';
+                    el.style.top = '0';
+                    el.style.left = '0';
+                    el.style.transform = 'none';
+                    el.style.height = 'auto';
+                    el.style.minHeight = 'auto';
+                    el.style.overflow = 'visible';
+                }
+            }).then(function(canvas) {
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        openImageFallback(canvas);
+                        return;
+                    }
+                    var file = new File([blob], 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg', { type: 'image/jpeg' });
+                    var canShare = navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }));
+                    if (canShare) {
+                        navigator.share({ files: [file], title: 'Score Sheet', text: 'Score sheet from match' }).catch(function() {
+                            openImageFallback(canvas);
+                        });
+                    } else {
+                        openImageFallback(canvas);
+                    }
+                }, 'image/jpeg', 0.92);
+            }).catch(function(err) {
+                alert('Unable to capture image. Please try again.');
+                console.error('html2canvas error:', err);
+            });
+        }
+        function openImageFallback(canvas) {
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                var w = window.open('', '_blank');
+                if (w) {
+                    w.document.write('<html><head><meta name="viewport" content="width=device-width"><title>Score Sheet</title></head><body style="margin:0;background:#333;display:flex;justify-content:center;align-items:center;min-height:100vh"><img src="' + dataUrl + '" style="max-width:100%;height:auto" alt="Score sheet"></body></html>');
+                    w.document.close();
+                } else {
+                    var a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg';
+                    a.click();
+                }
+            } else {
+                var a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg';
+                a.click();
+            }
+        }
+        document.getElementById('share-btn')?.addEventListener('click', shareAsImage);
+        document.getElementById('save-excel-btn')?.addEventListener('click', saveAsExcel);
+
+        function fitSheetToViewport() {
+            const sheet = document.querySelector('.sheet');
+            if (!sheet) return;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const w = sheet.offsetWidth;
+            const h = Math.max(sheet.offsetHeight, sheet.scrollHeight);
+            const scale = Math.min(vw / w, vh / h);
+            sheet.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+        }
+        function runFit() {
+            fitSheetToViewport();
+        }
+        runFit();
+        window.addEventListener('resize', runFit);
+        window.addEventListener('load', runFit);
+
+    </script>
+</body>
+</html>
