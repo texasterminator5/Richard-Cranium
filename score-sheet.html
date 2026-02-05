@@ -1091,7 +1091,7 @@
                     var file = new File([blob], 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg', { type: 'image/jpeg' });
                     var canShare = navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }));
                     if (canShare) {
-                        navigator.share({ files: [file], title: 'Score Sheet', text: 'Score sheet from match' }).catch(function() {
+                        navigator.share({ files: [file] }).catch(function() {
                             openImageFallback(canvas);
                         });
                     } else {
@@ -1159,7 +1159,17 @@
                 const x = (pageWidth - pdfWidth) / 2;
                 const y = (pageHeight - pdfHeight) / 2;
                 pdf.addImage(imgData, 'PNG', x, y, pdfWidth, pdfHeight);
-                pdf.save('score-sheet-' + new Date().toISOString().slice(0,10) + '.pdf');
+                var filename = 'score-sheet-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                var pdfBlob = pdf.output('blob');
+                var pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+                var canSharePdf = navigator.share && (navigator.canShare && navigator.canShare({ files: [pdfFile] }));
+                if (canSharePdf) {
+                    navigator.share({ files: [pdfFile] }).catch(function() {
+                        pdf.save(filename);
+                    });
+                } else {
+                    pdf.save(filename);
+                }
             }).catch(function(err) {
                 console.error('PDF generation error:', err);
                 alert('Error generating PDF');
