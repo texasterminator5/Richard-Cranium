@@ -620,7 +620,7 @@
         </div>
 
         <div class="save-section">
-            <button type="button" class="save-btn" id="save-excel-btn">Save as Excel</button>
+            <button type="button" class="save-btn" id="save-excel-btn">Save as CSV</button>
             <button type="button" class="save-btn" id="save-pdf-btn">Save as PDF</button>
         </div>
     </div>
@@ -1010,34 +1010,33 @@
         ];
         var homeColors = ['#FFFFCC','#E8E8E8','#CCCCFF','#CCFFCC','#FFCCCC'];
         function saveAsExcel() {
-            var html = ['<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">',
-                '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Score Sheet</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>',
-                '<body><table border="1" cellpadding="2" cellspacing="0" style="border-collapse:collapse;font-family:Segoe UI,sans-serif">'];
-            html.push('<tr><td colspan="8" style="text-align:center;font-weight:bold;font-size:14pt;padding:8px">Richard Cranium Scoresheet</td></tr>');
+            var rows = [];
+            rows.push('Richard Cranium Scoresheet');
+            rows.push('');
             [document.getElementById('home-table'), document.getElementById('visitor-table')].forEach(function(table, tblIdx) {
                 var isHome = tblIdx === 0;
-                html.push('<tr><td colspan="8" style="font-weight:bold;padding:4px">' + (isHome ? 'Home' : 'Visitor') + '</td></tr>');
-                html.push('<tr><th style="border:1px solid #333;background:#fff;font-weight:bold;padding:4px">Fargo</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Player</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 1</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 2</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 3</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 4</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 5</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Total</th></tr>');
+                rows.push(isHome ? 'Home' : 'Visitor');
+                rows.push(['Fargo', 'Player', 'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Total'].map(escapeCSV).join(','));
                 var tbody = table.querySelector('tbody');
                 tbody.querySelectorAll('tr[data-row]').forEach(function(tr, rIdx) {
                     var cells = tr.querySelectorAll('td');
                     var fargo = (cells[0] && cells[0].querySelector('.fargo-input')) ? cells[0].querySelector('.fargo-input').value : '';
                     var player = (cells[1] && cells[1].querySelector('.player-input')) ? cells[1].querySelector('.player-input').value : '';
-                    var row = '<tr><td style="border:1px solid #333;padding:4px;text-align:center">' + escHtml(fargo) + '</td><td style="border:1px solid #333;padding:4px;text-align:center">' + escHtml(player) + '</td>';
+                    var row = [escapeCSV(fargo), escapeCSV(player)];
                     for (var c = 2; c < 7; c++) {
                         var rdCell = cells[c];
                         var r = getRoundValue(rdCell);
                         var s = getShapeValue(rdCell);
                         var val = s ? r + ' (' + s + ')' : r;
-                        row += '<td style="border:1px solid #333;padding:4px;text-align:center;background:' + (isHome ? homeColors[rIdx] : visitorColors[rIdx][c-2]) + '">' + escHtml(val) + '</td>';
+                        row.push(escapeCSV(val));
                     }
                     var tot = (cells[7] && cells[7].querySelector('.row-total')) ? cells[7].querySelector('.row-total').value : '';
-                    row += '<td style="border:1px solid #333;padding:4px;text-align:center;background:#f9f9f9">' + escHtml(tot) + '</td></tr>';
-                    html.push(row);
+                    row.push(escapeCSV(tot));
+                    rows.push(row.join(','));
                 });
                 tbody.querySelectorAll('.summary-row').forEach(function(tr) {
                     var cells = tr.querySelectorAll('td');
-                    var row = '<tr>';
+                    var row = [];
                     var excelCol = 0;
                     for (var i = 0; i < cells.length && excelCol < 8; i++) {
                         var td = cells[i];
@@ -1046,19 +1045,18 @@
                         var inp = td.querySelector ? td.querySelector('input') : null;
                         var val = label || (inp ? inp.value : (td.textContent || '').trim());
                         if (td.classList.contains('summary-rest') && !val) val = '';
-                        var align = label && excelCol === 1 ? 'right' : 'center';
-                        row += '<td colspan="' + colspan + '" style="border:1px solid #333;padding:4px;text-align:' + align + '">' + escHtml(val) + '</td>';
+                        row.push(escapeCSV(val));
                         excelCol += colspan;
                     }
-                    row += '</tr>';
-                    html.push(row);
+                    rows.push(row.join(','));
                 });
+                rows.push('');
             });
-            html.push('</table></body></html>');
-            var blob = new Blob(['\ufeff' + html.join('')], { type: 'application/vnd.ms-excel' });
+            var csv = rows.join('\r\n');
+            var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.xls';
+            a.download = 'score-sheet-' + new Date().toISOString().slice(0, 10) + '.csv';
             a.click();
             URL.revokeObjectURL(a.href);
         }
