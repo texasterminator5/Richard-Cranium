@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Score Sheet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 0;
+            color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        @media print {
+            html, body { overflow: visible !important; }
+            body { background: #fff; padding: 0; }
+            .sheet-wrapper { overflow: visible !important; }
+            .sheet { box-shadow: none; padding: 1rem; transform: none !important; overflow: visible !important; }
+        }
+        .sheet-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sheet {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 1080px;
+            height: auto;
+            background: #fff;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+            transform-origin: center center;
+        }
+        .section {
+            margin-bottom: 0.5rem;
+        }
+        .section-title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+        .section-title {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+        .team-select {
+            font-size: 1.6rem;
+            padding: 0.2rem 0.5rem;
+            min-width: 12rem;
+            border: 1px solid #333;
+            color: #000;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 0;
+            text-align: center;
+            min-width: 0;
+            position: relative;
+        }
+        /* Cell height = width of Round columns (square cells) */
+        .square-cell {
+            width: 1px;
+            min-width: 2rem;
+            min-height: 4.2rem;
+        }
+        /* Player rows: taller cells for Fargo, Player, Round, and Total columns */
+        tr[data-row] td {
+            height: 4.2rem;
+            min-height: 4.2rem;
+            max-height: 4.2rem;
+        }
+        /* Round cells: fixed height so W selection doesn't expand and cut off visitor section */
+        tr[data-row] td.square-cell:nth-child(n+3):not(:last-child) {
+            height: 4.2rem;
+            min-height: 4.2rem;
+            max-height: 4.2rem;
+        }
+        /* Shrink summary rows (Round Total, Running Total, Total Fargo, Avg Fargo) */
+        tr.summary-row {
+            height: 1px;
+        }
+        tr.summary-row td,
+        tr.summary-row th {
+            height: 1.75rem !important;
+            min-height: 1.75rem !important;
+            max-height: 1.75rem !important;
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.2rem !important;
+        }
+        .summary-row input {
+            min-height: 0.9rem !important;
+        }
+        .round-cell-inner {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 100%;
+            min-height: 0;
+            max-height: 100%;
+            padding: 0 1px;
+            overflow: hidden;
+        }
+        .round-cell-inner .rd-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            min-height: 0;
+            font-size: 1.6rem;
+            color: #000;
+            text-align: center;
+            text-align-last: center;
+            z-index: 0;
+        }
+        .round-cell-inner select {
+            min-height: 0;
+            font-size: 1.6rem;
+            color: #000;
+            padding: 0 0.1rem;
+            text-align: center;
+            text-align-last: center;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .round-cell-inner .shape-input {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            font-size: 0.8rem;
+            color: #000;
+            min-height: 0;
+            display: none;
+            z-index: 1;
+        }
+        .round-cell-inner .shape-input.shape-visible {
+            display: block;
+        }
+        .fargo-col {
+            width: 5.5rem;
+            min-width: 5.5rem;
+            text-align: center;
+        }
+        .player-col {
+            width: 22%;
+            text-align: center;
+        }
+        .rd-col, .total-col {
+            width: 10%;
+        }
+        th {
+            font-size: 1.6rem;
+            font-weight: 600;
+            background: #fff;
+            text-align: center;
+            height: 3.5rem;
+            min-height: 3.5rem;
+        }
+        .round-header-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+        .round-header-wrap .round-label {
+            display: block;
+            font-size: 1.6rem;
+        }
+        .round-header-wrap .round-num {
+            display: block;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            height: 100%;
+            min-height: 1rem;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 1.6rem;
+            padding: 0.25rem;
+        }
+        input:focus, select:focus {
+            outline: 1px solid #0066cc;
+            outline-offset: -1px;
+        }
+        .player-name-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            width: 100%;
+            min-width: 0;
+        }
+        .player-name-wrap input {
+            flex: 1;
+            min-width: 0;
+        }
+        .high-man-star {
+            font-size: 1.4rem;
+            color: #c90;
+            flex-shrink: 0;
+        }
+        .player-input[readonly] {
+            background: #f9f9f9;
+        }
+        .player-col input {
+            text-align: center;
+            font-size: 1.6rem;
+        }
+        .fargo-col input,
+        .row-total,
+        .round-total,
+        .avg-fargo-input {
+            font-size: 1.6rem;
+        }
+        .total-cell {
+            background: #f9f9f9;
+            font-weight: 500;
+        }
+        .total-cell input {
+            background: transparent;
+            font-weight: 500;
+        }
+        .section-divider {
+            border: none;
+            border-top: 4px solid #333;
+            margin: 0.5rem 0;
+        }
+        .race-to-cell {
+            border: 1px solid #333;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+        .race-to-cell .race-to-input {
+            font-size: 1.3rem;
+        }
+        .summary-row .summary-label {
+            font-size: 1.3rem;
+            text-align: left;
+            padding-left: 0.5rem;
+            font-weight: 600;
+        }
+        .summary-row .round-total,
+        .summary-row .avg-fargo-input {
+            font-size: 1.3rem;
+        }
+        .summary-row .summary-label.round-running {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 0.5rem;
+        }
+        .summary-row .square-cell {
+            text-align: center;
+        }
+        .summary-row .square-cell {
+            padding: 0.15rem;
+        }
+        .summary-row input {
+            width: 100%;
+        }
+        /* Remove left grid line and all horizontal lines on Fargo column for rows 7-10 (Round Total through Avg Fargo) */
+        .summary-row-edges td:first-child {
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+        }
+        /* Remove left, top, bottom, right borders of empty cells after Total Fargo and Avg Fargo values */
+        .summary-row-edges td.summary-rest {
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-right: none;
+        }
+        .save-section {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .save-btn {
+            color: #000;
+            padding: 0.35rem 0.7rem;
+            font-size: 1.6rem;
+            font-weight: 500;
+            border: 1px solid #333;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .save-btn:hover {
+            background: #f0f0f0;
+        }
+        /* Home: row colors for round columns only (not Total) */
+        #home-table tr[data-row="0"] td:nth-child(n+3):not(:last-child) { background-color: #FFFFCC; }
+        #home-table tr[data-row="1"] td:nth-child(n+3):not(:last-child) { background-color: #E8E8E8; }
+        #home-table tr[data-row="2"] td:nth-child(n+3):not(:last-child) { background-color: #CCCCFF; }
+        #home-table tr[data-row="3"] td:nth-child(n+3):not(:last-child) { background-color: #CCFFCC; }
+        #home-table tr[data-row="4"] td:nth-child(n+3):not(:last-child) { background-color: #FFCCCC; }
+        /* Visitor: shifting colors per player row - yellow, red, green, blue, gray by round */
+        #visitor-table tr[data-row="0"] td:nth-child(3) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(4) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(5) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="0"] td:nth-child(6) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="0"] td:nth-child(7) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="1"] td:nth-child(3) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="1"] td:nth-child(4) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(5) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(6) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="1"] td:nth-child(7) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="2"] td:nth-child(3) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="2"] td:nth-child(4) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="2"] td:nth-child(5) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="2"] td:nth-child(6) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="2"] td:nth-child(7) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(3) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(4) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="3"] td:nth-child(5) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="3"] td:nth-child(6) { background-color: #FFFFCC; }
+        #visitor-table tr[data-row="3"] td:nth-child(7) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(3) { background-color: #FFCCCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(4) { background-color: #CCFFCC; }
+        #visitor-table tr[data-row="4"] td:nth-child(5) { background-color: #CCCCFF; }
+        #visitor-table tr[data-row="4"] td:nth-child(6) { background-color: #E8E8E8; }
+        #visitor-table tr[data-row="4"] td:nth-child(7) { background-color: #FFFFCC; }
+        .cell-b {
+            position: absolute;
+            top: 0;
+            right: 0.15rem;
+            font-weight: bold;
+            font-size: 0.45em;
+        }
+        .sheet-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .sheet-header {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+        .match-result {
+            font-size: 1.6rem;
+            font-weight: 700;
+            padding: 0.25rem 0.5rem;
+        }
+        .match-result.win { color: #0a0; }
+        .match-result.loss { color: #c00; }
+        .match-result.tie { color: #f80; }
+    </style>
+</head>
+<body>
+    <div class="sheet-wrapper">
+    <div class="sheet">
+        <div class="sheet-header-row">
+            <div class="sheet-header">Richard Cranium Scoresheet</div>
+            <div class="match-result" id="match-result"></div>
+        </div>
+        <!-- Home Section -->
+        <div class="section">
+            <div class="section-title-row">
+                <span class="section-title">Home</span>
+                <select class="team-select" id="home-team">
+                    <option value="">Select team</option>
+                    <option value="Plan B">Plan B</option>
+                    <option value="Offenchurch">Offenchurch</option>
+                    <option value="Sharp Shooters">Sharp Shooters</option>
+                    <option value="W8 4 IT">W8 4 IT</option>
+                    <option value="Top Shelf">Top Shelf</option>
+                    <option value="Looking For Some Touch">Looking For Some Touch</option>
+                    <option value="Richard Cranium">Richard Cranium</option>
+                    <option value="Texas Heat">Texas Heat</option>
+                    <option value="High Flyers">High Flyers</option>
+                    <option value="Deep Pockets">Deep Pockets</option>
+                    <option value="Below Average">Below Average</option>
+                    <option value="The Degenerates">The Degenerates</option>
+                    <option value="Hot Dogs & Oreos">Hot Dogs & Oreos</option>
+                    <option value="Gimme an Out">Gimme an Out</option>
+                    <option value="Texas Express">Texas Express</option>
+                    <option value="WTF">WTF</option>
+                </select>
+            </div>
+            <table id="home-table">
+                <thead>
+                    <tr>
+                        <th class="fargo-col square-cell">Fargo</th>
+                        <th class="player-col square-cell">Player</th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">1</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">2</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">3</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">4</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">5</span></span></th>
+                        <th class="total-col square-cell">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-row="0">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="1">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="2">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="3">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="4">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Round Total</td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Avg Fargo</td>
+                        <td class="square-cell"><input type="text" class="avg-fargo-input" readonly></td>
+                        <td colspan="3" class="square-cell summary-rest"></td>
+                        <td class="square-cell race-to-cell">Race To</td>
+                        <td class="square-cell race-to-cell"><input type="number" class="race-to-input" min="1" step="1"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Visitor Section - inverse B: Round 1,3 all B; Round 5 players 2,4 only -->
+        <div class="section">
+            <div class="section-title-row">
+                <span class="section-title">Visitor</span>
+                <select class="team-select" id="visitor-team">
+                    <option value="">Select team</option>
+                    <option value="Plan B">Plan B</option>
+                    <option value="Offenchurch">Offenchurch</option>
+                    <option value="Sharp Shooters">Sharp Shooters</option>
+                    <option value="W8 4 IT">W8 4 IT</option>
+                    <option value="Top Shelf">Top Shelf</option>
+                    <option value="Looking For Some Touch">Looking For Some Touch</option>
+                    <option value="Richard Cranium">Richard Cranium</option>
+                    <option value="Texas Heat">Texas Heat</option>
+                    <option value="High Flyers">High Flyers</option>
+                    <option value="Deep Pockets">Deep Pockets</option>
+                    <option value="Below Average">Below Average</option>
+                    <option value="The Degenerates">The Degenerates</option>
+                    <option value="Hot Dogs & Oreos">Hot Dogs & Oreos</option>
+                    <option value="Gimme an Out">Gimme an Out</option>
+                    <option value="Texas Express">Texas Express</option>
+                    <option value="WTF">WTF</option>
+                </select>
+            </div>
+            <table id="visitor-table">
+                <thead>
+                    <tr>
+                        <th class="fargo-col square-cell">Fargo</th>
+                        <th class="player-col square-cell">Player</th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">1</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">2</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">3</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">4</span></span></th>
+                        <th class="rd-col square-cell"><span class="round-header-wrap"><span class="round-label">Round</span><span class="round-num">5</span></span></th>
+                        <th class="total-col square-cell">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-row="0">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="1">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="2">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="3">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr data-row="4">
+                        <td class="fargo-col square-cell"><input type="number" class="fargo-input" min="0" step="1"></td>
+                        <td class="player-col square-cell"><div class="player-name-wrap"><span class="high-man-star"></span><input type="text" class="player-input"></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><span class="cell-b">B</span><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell"><div class="round-cell-inner"><select class="rd-input"><option value=""></option><option value="0">L</option><option value="1">W</option></select><select class="shape-input"><option value=""></option><option value="break-run">BR</option><option value="table-run">TR</option></select></div></td>
+                        <td class="square-cell total-cell"><input type="text" class="row-total" readonly></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Round Total</td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="0"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="1"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="2"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="3"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="4"></td>
+                        <td class="square-cell"><input type="text" class="round-total" readonly data-col="5"></td>
+                    </tr>
+                    <tr class="summary-row summary-row-edges">
+                        <td class="square-cell"></td>
+                        <td class="summary-label round-running">Avg Fargo</td>
+                        <td class="square-cell"><input type="text" class="avg-fargo-input" readonly></td>
+                        <td colspan="3" class="square-cell summary-rest"></td>
+                        <td class="square-cell race-to-cell">Race To</td>
+                        <td class="square-cell race-to-cell"><input type="number" class="race-to-input" min="1" step="1"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="save-section">
+            <button type="button" class="save-btn" id="save-excel-btn">Save as Excel</button>
+            <button type="button" class="save-btn" id="save-pdf-btn">Save as PDF</button>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function updateTable(table) {
+            const tbody = table.querySelector('tbody');
+            const playerRows = tbody.querySelectorAll('tr[data-row]');
+
+            // Update row totals
+            playerRows.forEach(row => {
+                const rdInputs = row.querySelectorAll('.rd-input');
+                const totalInput = row.querySelector('.row-total');
+                let sum = 0;
+                let hasEntry = false;
+                rdInputs.forEach(select => {
+                    const val = parseInt(select.value, 10);
+                    sum += isNaN(val) ? 0 : val;
+                    if (select.value !== '') hasEntry = true;
+                });
+                totalInput.value = hasEntry ? String(sum) : '';
+            });
+
+            // Update Round Total row (cols 0-4 = RD1-5 sums, col 5 = Total sum)
+            const roundTotals = tbody.querySelectorAll('.round-total');
+            for (let col = 0; col < 6; col++) {
+                let sum = 0;
+                let hasEntry = false;
+                playerRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const cellIdx = col + 2;
+                    if (cells[cellIdx]) {
+                        const select = cells[cellIdx].querySelector('.rd-input');
+                        const totalInput = cells[cellIdx].querySelector('.row-total');
+                        const val = col < 5
+                            ? (select ? parseInt(select.value, 10) : 0)
+                            : parseInt(totalInput?.value, 10);
+                        sum += isNaN(val) ? 0 : val;
+                        if (col < 5 && select && select.value !== '') hasEntry = true;
+                        if (col === 5 && totalInput && totalInput.value !== '') hasEntry = true;
+                    }
+                });
+                roundTotals[col].value = hasEntry ? String(sum) : '';
+            }
+
+            // Total Fargo and Avg Fargo from player Fargo inputs
+            const fargoInputs = tbody.querySelectorAll('.fargo-input');
+            let totalFargo = 0;
+            let count = 0;
+            fargoInputs.forEach(input => {
+                const val = parseInt(input.value, 10);
+                if (!isNaN(val)) {
+                    totalFargo += val;
+                    count++;
+                }
+            });
+            const avgFargoInput = tbody.querySelector('.avg-fargo-input');
+            if (avgFargoInput) avgFargoInput.value = count > 0 ? Math.round(totalFargo / count) : '';
+        }
+
+        function updateHighMan() {
+            [homeTable, visitorTable].forEach(table => {
+                const tbody = table.querySelector('tbody');
+                const playerRows = tbody.querySelectorAll('tr[data-row]');
+                let bestTotal = -1;
+                let bestBRTR = -1;
+                playerRows.forEach(row => {
+                    const totalInput = row.querySelector('.row-total');
+                    const total = parseInt(totalInput?.value || '0', 10) || 0;
+                    let brtr = 0;
+                    row.querySelectorAll('.shape-input').forEach(sel => {
+                        if (sel.value === 'break-run' || sel.value === 'table-run') brtr++;
+                    });
+                    if (total > bestTotal || (total === bestTotal && total > 0 && brtr > bestBRTR)) {
+                        bestTotal = total;
+                        bestBRTR = brtr;
+                    }
+                });
+                playerRows.forEach(row => {
+                    const totalInput = row.querySelector('.row-total');
+                    const total = parseInt(totalInput?.value || '0', 10) || 0;
+                    let brtr = 0;
+                    row.querySelectorAll('.shape-input').forEach(sel => {
+                        if (sel.value === 'break-run' || sel.value === 'table-run') brtr++;
+                    });
+                    const star = row.querySelector('.high-man-star');
+                    if (star) star.textContent = (total === bestTotal && brtr === bestBRTR && bestTotal > 0) ? '\u2605' : '';
+                });
+            });
+        }
+
+        function updateMatchResult() {
+            const el = document.getElementById('match-result');
+            if (!el) return;
+            const homeTeamEl = document.getElementById('home-team');
+            const visitorTeamEl = document.getElementById('visitor-team');
+            const homeTeam = homeTeamEl ? homeTeamEl.value : '';
+            const visitorTeam = visitorTeamEl ? visitorTeamEl.value : '';
+            const weAreHome = homeTeam === 'Richard Cranium';
+            const weAreVisitor = visitorTeam === 'Richard Cranium';
+            if (!weAreHome && !weAreVisitor) {
+                el.textContent = '';
+                el.className = 'match-result';
+                return;
+            }
+            const homeRaceToInput = document.querySelector('#home-table .race-to-input');
+            const visitorRaceToInput = document.querySelector('#visitor-table .race-to-input');
+            const ourRaceToInput = weAreHome ? homeRaceToInput : visitorRaceToInput;
+            const raceToVal = ourRaceToInput ? parseInt(ourRaceToInput.value, 10) : NaN;
+            if (!ourRaceToInput || ourRaceToInput.value === '' || isNaN(raceToVal)) {
+                el.textContent = '';
+                el.className = 'match-result';
+                return;
+            }
+            const homeTotalEl = document.querySelector('#home-table .round-total[data-col="5"]');
+            const visitorTotalEl = document.querySelector('#visitor-table .round-total[data-col="5"]');
+            const homeTotal = homeTotalEl ? parseInt(homeTotalEl.value, 10) : 0;
+            const visitorTotal = visitorTotalEl ? parseInt(visitorTotalEl.value, 10) : 0;
+            const homeRaceToVal = homeRaceToInput ? parseInt(homeRaceToInput.value, 10) : NaN;
+            const visitorRaceToVal = visitorRaceToInput ? parseInt(visitorRaceToInput.value, 10) : NaN;
+            const homeReached = !isNaN(homeTotal) && !isNaN(homeRaceToVal) && homeTotal >= homeRaceToVal;
+            const visitorReached = !isNaN(visitorTotal) && !isNaN(visitorRaceToVal) && visitorTotal >= visitorRaceToVal;
+            if (!homeReached && !visitorReached) {
+                el.textContent = '';
+                el.className = 'match-result';
+                return;
+            }
+            const weReached = weAreHome ? homeReached : visitorReached;
+            const theyReached = weAreHome ? visitorReached : homeReached;
+            const isTie = weReached && theyReached;
+            if (isTie) {
+                el.textContent = 'Tie';
+                el.className = 'match-result tie';
+            } else if (weReached) {
+                el.textContent = 'WIN';
+                el.className = 'match-result win';
+            } else if (theyReached) {
+                el.textContent = 'LOSS';
+                el.className = 'match-result loss';
+            } else {
+                el.textContent = '';
+                el.className = 'match-result';
+            }
+        }
+
+        const homeTable = document.getElementById('home-table');
+        const visitorTable = document.getElementById('visitor-table');
+        const TEAM_NAMES = ['Plan B','Offenchurch','Sharp Shooters','W8 4 IT','Top Shelf','Looking For Some Touch','Richard Cranium','Texas Heat','High Flyers','Deep Pockets','Below Average','The Degenerates','Hot Dogs & Oreos','Gimme an Out','Texas Express','WTF'];
+        const RC_PLAYER_NAMES = ['Ben','Chris','Corina','Cory','Dan','Eric','Gabriel','John','Richard','Stephan'];
+        let syncingInverse = false;
+
+        function updateRcPlayerInputs() {
+            const homeTeam = document.getElementById('home-team')?.value || '';
+            const visitorTeam = document.getElementById('visitor-team')?.value || '';
+            const rcTable = homeTeam === 'Richard Cranium' ? homeTable : (visitorTeam === 'Richard Cranium' ? visitorTable : null);
+            [homeTable, visitorTable].forEach(table => {
+                const playerRows = table.querySelectorAll('tr[data-row]');
+                const tableId = table.id.replace('-table','');
+                playerRows.forEach((row, idx) => {
+                    const wrap = row.querySelector('.player-name-wrap');
+                    if (!wrap) return;
+                    let playerEl = wrap.querySelector('.player-input');
+                    if (!playerEl) return;
+                    const currentVal = playerEl.value || '';
+                    const isSelect = playerEl.tagName === 'SELECT';
+                    if (table !== rcTable) {
+                        if (isSelect) {
+                            const newInput = document.createElement('input');
+                            newInput.type = 'text';
+                            newInput.className = 'player-input';
+                            newInput.value = currentVal === 'Other' ? '' : currentVal;
+                            playerEl.replaceWith(newInput);
+                        }
+                        return;
+                    }
+                    const usedNames = [];
+                    playerRows.forEach((r, i) => {
+                        if (i !== idx) {
+                            const el = r.querySelector('.player-input');
+                            const val = el?.value?.trim();
+                            if (val && val !== 'Other' && RC_PLAYER_NAMES.includes(val)) usedNames.push(val);
+                        }
+                    });
+                    const available = RC_PLAYER_NAMES.filter(n => !usedNames.includes(n));
+                    if (currentVal === 'Other' || (!RC_PLAYER_NAMES.includes(currentVal) && currentVal !== '')) {
+                        if (isSelect) {
+                            const newInput = document.createElement('input');
+                            newInput.type = 'text';
+                            newInput.className = 'player-input';
+                            newInput.value = currentVal === 'Other' ? '' : currentVal;
+                            playerEl.replaceWith(newInput);
+                        }
+                    } else {
+                        if (!isSelect) {
+                            const newSelect = document.createElement('select');
+                            newSelect.className = 'player-input';
+                            newSelect.innerHTML = '<option value="">Select player</option>' + 
+                                available.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('') +
+                                '<option value="Other">Other</option>';
+                            newSelect.value = currentVal;
+                            playerEl.replaceWith(newSelect);
+                        } else {
+                            playerEl.innerHTML = '<option value="">Select player</option>' + 
+                                available.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('') +
+                                '<option value="Other">Other</option>';
+                            playerEl.value = currentVal;
+                        }
+                    }
+                });
+            });
+        }
+
+        function updateTeamDropdowns() {
+            const homeSelect = document.getElementById('home-team');
+            const visitorSelect = document.getElementById('visitor-team');
+            if (!homeSelect || !visitorSelect) return;
+            const homeVal = homeSelect.value;
+            const visitorVal = visitorSelect.value;
+            if (homeVal && homeVal === visitorVal) {
+                visitorSelect.value = '';
+            }
+            if (visitorVal && visitorVal === homeVal) {
+                homeSelect.value = '';
+            }
+            const excludeHome = homeSelect.value;
+            const excludeVisitor = visitorSelect.value;
+            function sortTeams(teams) {
+                const rest = teams.filter(t => t !== 'Richard Cranium').sort((a, b) => a.localeCompare(b));
+                return teams.includes('Richard Cranium') ? ['Richard Cranium'].concat(rest) : rest;
+            }
+            const homeTeams = sortTeams(TEAM_NAMES.filter(t => t !== excludeVisitor));
+            const visitorTeams = sortTeams(TEAM_NAMES.filter(t => t !== excludeHome));
+            const homeOpts = ['<option value="">Select team</option>'].concat(
+                homeTeams.map(t => '<option value="' + t.replace(/"/g, '&quot;') + '">' + t + '</option>')
+            );
+            const visitorOpts = ['<option value="">Select team</option>'].concat(
+                visitorTeams.map(t => '<option value="' + t.replace(/"/g, '&quot;') + '">' + t + '</option>')
+            );
+            homeSelect.innerHTML = homeOpts.join('');
+            visitorSelect.innerHTML = visitorOpts.join('');
+            if (excludeHome) homeSelect.value = excludeHome;
+            if (excludeVisitor) visitorSelect.value = excludeVisitor;
+        }
+
+        function getCorrespondingSelect(sourceSelect, sourceTable) {
+            const sourceRow = sourceSelect.closest('tr[data-row]');
+            if (!sourceRow) return null;
+            const rowIdx = parseInt(sourceRow.getAttribute('data-row'), 10);
+            const cells = sourceRow.querySelectorAll('td');
+            const sourceCell = sourceSelect.closest('td');
+            let colIdx = -1;
+            for (let i = 0; i < cells.length; i++) {
+                if (cells[i] === sourceCell) { colIdx = i; break; }
+            }
+            if (colIdx < 2 || colIdx > 6) return null;
+            const otherTable = sourceTable.id === 'home-table' ? visitorTable : homeTable;
+            const otherRows = otherTable.querySelectorAll('tr[data-row]');
+            const otherRow = otherRows[rowIdx];
+            if (!otherRow) return null;
+            const otherCells = otherRow.querySelectorAll('td');
+            const otherCell = otherCells[colIdx];
+            return otherCell ? otherCell.querySelector('.rd-input') : null;
+        }
+
+        function updateShapeVisibility(rdSelect) {
+            const cellInner = rdSelect.closest('.round-cell-inner');
+            if (!cellInner) return;
+            const shapeInput = cellInner.querySelector('.shape-input');
+            if (!shapeInput) return;
+            const cell = rdSelect.closest('td');
+            const hasB = cell && cell.querySelector('.cell-b');
+            if (rdSelect.value === '1') {
+                var keepVal = (hasB && shapeInput.value === 'break-run') || (!hasB && shapeInput.value === 'table-run');
+                shapeInput.innerHTML = hasB
+                    ? '<option value=""></option><option value="break-run">BR</option>'
+                    : '<option value=""></option><option value="table-run">TR</option>';
+                if (keepVal) shapeInput.value = hasB ? 'break-run' : 'table-run';
+                shapeInput.classList.add('shape-visible');
+            } else {
+                shapeInput.classList.remove('shape-visible');
+                shapeInput.value = '';
+            }
+        }
+
+        function syncInverseWL(sourceSelect, sourceTable) {
+            const otherSelect = getCorrespondingSelect(sourceSelect, sourceTable);
+            if (!otherSelect || syncingInverse) return;
+            const val = sourceSelect.value;
+            syncingInverse = true;
+            if (val === '') otherSelect.value = '';
+            else if (val === '1') otherSelect.value = '0';
+            else if (val === '0') otherSelect.value = '1';
+            updateShapeVisibility(sourceSelect);
+            updateShapeVisibility(otherSelect);
+            updateTable(visitorTable);
+            updateTable(homeTable);
+            syncingInverse = false;
+        }
+
+        [homeTable, visitorTable].forEach(table => {
+            table.addEventListener('input', (e) => {
+                if (!syncingInverse) {
+                    updateTable(table);
+                    updateHighMan();
+                    updateMatchResult();
+                }
+            });
+            table.addEventListener('change', (e) => {
+                if (syncingInverse) return;
+                if (e.target.classList.contains('rd-input')) {
+                    syncInverseWL(e.target, table);
+                    updateShapeVisibility(e.target);
+                }
+                updateTable(table);
+                updateHighMan();
+                updateMatchResult();
+            });
+        });
+
+        document.querySelectorAll('.race-to-input').forEach(input => {
+            input.addEventListener('input', updateMatchResult);
+            input.addEventListener('change', updateMatchResult);
+        });
+
+        document.querySelectorAll('.team-select').forEach(select => {
+            select.addEventListener('change', function() {
+                updateTeamDropdowns();
+                updateRcPlayerInputs();
+                updateMatchResult();
+            });
+        });
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('player-input') && e.target.tagName === 'INPUT') {
+                updateRcPlayerInputs();
+            }
+        });
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('player-input')) {
+                if (e.target.tagName === 'SELECT' && e.target.value === 'Other') {
+                    const newInput = document.createElement('input');
+                    newInput.type = 'text';
+                    newInput.className = 'player-input';
+                    newInput.value = '';
+                    e.target.replaceWith(newInput);
+                    newInput.focus();
+                } else {
+                    updateRcPlayerInputs();
+                }
+            }
+        });
+        updateTeamDropdowns();
+        updateRcPlayerInputs();
+
+        document.querySelectorAll('.rd-input').forEach(rd => updateShapeVisibility(rd));
+
+        function getRoundValue(cell) {
+            const rdSelect = cell.querySelector('.rd-input');
+            if (!rdSelect) return '';
+            const v = rdSelect.value;
+            if (v === '1') return 'W';
+            if (v === '0') return 'L';
+            return '';
+        }
+        function getShapeValue(cell) {
+            const shapeSelect = cell.querySelector('.shape-input');
+            if (!shapeSelect || !shapeSelect.classList.contains('shape-visible')) return '';
+            const v = shapeSelect.value;
+            if (v === 'break-run') return 'BR';
+            if (v === 'table-run') return 'TR';
+            return '';
+        }
+        function escapeCSV(val) {
+            const s = String(val ?? '');
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+        function escHtml(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        var visitorColors = [
+            ['#FFFFCC','#FFCCCC','#CCFFCC','#CCCCFF','#E8E8E8'],
+            ['#E8E8E8','#FFFFCC','#FFCCCC','#CCFFCC','#CCCCFF'],
+            ['#CCCCFF','#E8E8E8','#FFFFCC','#FFCCCC','#CCFFCC'],
+            ['#CCFFCC','#CCCCFF','#E8E8E8','#FFFFCC','#FFCCCC'],
+            ['#FFCCCC','#CCFFCC','#CCCCFF','#E8E8E8','#FFFFCC']
+        ];
+        var homeColors = ['#FFFFCC','#E8E8E8','#CCCCFF','#CCFFCC','#FFCCCC'];
+        function saveAsExcel() {
+            var html = ['<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">',
+                '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Score Sheet</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>',
+                '<body><table border="1" cellpadding="2" cellspacing="0" style="border-collapse:collapse;font-family:Segoe UI,sans-serif">'];
+            html.push('<tr><td colspan="8" style="text-align:center;font-weight:bold;font-size:14pt;padding:8px">Richard Cranium Scoresheet</td></tr>');
+            [document.getElementById('home-table'), document.getElementById('visitor-table')].forEach(function(table, tblIdx) {
+                var isHome = tblIdx === 0;
+                html.push('<tr><td colspan="8" style="font-weight:bold;padding:4px">' + (isHome ? 'Home' : 'Visitor') + '</td></tr>');
+                html.push('<tr><th style="border:1px solid #333;background:#fff;font-weight:bold;padding:4px">Fargo</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Player</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 1</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 2</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 3</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 4</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Round 5</th><th style="border:1px solid #333;font-weight:bold;padding:4px">Total</th></tr>');
+                var tbody = table.querySelector('tbody');
+                tbody.querySelectorAll('tr[data-row]').forEach(function(tr, rIdx) {
+                    var cells = tr.querySelectorAll('td');
+                    var fargo = (cells[0] && cells[0].querySelector('.fargo-input')) ? cells[0].querySelector('.fargo-input').value : '';
+                    var player = (cells[1] && cells[1].querySelector('.player-input')) ? cells[1].querySelector('.player-input').value : '';
+                    var row = '<tr><td style="border:1px solid #333;padding:4px;text-align:center">' + escHtml(fargo) + '</td><td style="border:1px solid #333;padding:4px;text-align:center">' + escHtml(player) + '</td>';
+                    for (var c = 2; c < 7; c++) {
+                        var rdCell = cells[c];
+                        var r = getRoundValue(rdCell);
+                        var s = getShapeValue(rdCell);
+                        var val = s ? r + ' (' + s + ')' : r;
+                        row += '<td style="border:1px solid #333;padding:4px;text-align:center;background:' + (isHome ? homeColors[rIdx] : visitorColors[rIdx][c-2]) + '">' + escHtml(val) + '</td>';
+                    }
+                    var tot = (cells[7] && cells[7].querySelector('.row-total')) ? cells[7].querySelector('.row-total').value : '';
+                    row += '<td style="border:1px solid #333;padding:4px;text-align:center;background:#f9f9f9">' + escHtml(tot) + '</td></tr>';
+                    html.push(row);
+                });
+                tbody.querySelectorAll('.summary-row').forEach(function(tr) {
+                    var cells = tr.querySelectorAll('td');
+                    var row = '<tr>';
+                    var excelCol = 0;
+                    for (var i = 0; i < cells.length && excelCol < 8; i++) {
+                        var td = cells[i];
+                        var colspan = parseInt(td.getAttribute('colspan') || '1', 10);
+                        var label = td.classList.contains('summary-label') ? (td.textContent || '').trim() : '';
+                        var inp = td.querySelector ? td.querySelector('input') : null;
+                        var val = label || (inp ? inp.value : (td.textContent || '').trim());
+                        if (td.classList.contains('summary-rest') && !val) val = '';
+                        var align = label && excelCol === 1 ? 'right' : 'center';
+                        row += '<td colspan="' + colspan + '" style="border:1px solid #333;padding:4px;text-align:' + align + '">' + escHtml(val) + '</td>';
+                        excelCol += colspan;
+                    }
+                    row += '</tr>';
+                    html.push(row);
+                });
+            });
+            html.push('</table></body></html>');
+            var blob = new Blob(['\ufeff' + html.join('')], { type: 'application/vnd.ms-excel' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.xls';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+        function shareAsImage() {
+            const sheet = document.querySelector('.sheet');
+            if (!sheet) return;
+            if (typeof html2canvas === 'undefined') {
+                alert('Loading... Please try again in a moment.');
+                return;
+            }
+            var scale = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 2;
+            html2canvas(sheet, {
+                scale: scale,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                onclone: function(clonedDoc, el) {
+                    el.style.position = 'relative';
+                    el.style.top = '0';
+                    el.style.left = '0';
+                    el.style.transform = 'none';
+                    el.style.height = 'auto';
+                    el.style.minHeight = 'auto';
+                    el.style.overflow = 'visible';
+                }
+            }).then(function(canvas) {
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        openImageFallback(canvas);
+                        return;
+                    }
+                    var file = new File([blob], 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg', { type: 'image/jpeg' });
+                    var canShare = navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }));
+                    if (canShare) {
+                        navigator.share({ files: [file], title: 'Score Sheet', text: 'Score sheet from match' }).catch(function() {
+                            openImageFallback(canvas);
+                        });
+                    } else {
+                        openImageFallback(canvas);
+                    }
+                }, 'image/jpeg', 0.92);
+            }).catch(function(err) {
+                alert('Unable to capture image. Please try again.');
+                console.error('html2canvas error:', err);
+            });
+        }
+        function openImageFallback(canvas) {
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                var w = window.open('', '_blank');
+                if (w) {
+                    w.document.write('<html><head><meta name="viewport" content="width=device-width"><title>Score Sheet</title></head><body style="margin:0;background:#333;display:flex;justify-content:center;align-items:center;min-height:100vh"><img src="' + dataUrl + '" style="max-width:100%;height:auto" alt="Score sheet"></body></html>');
+                    w.document.close();
+                } else {
+                    var a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg';
+                    a.click();
+                }
+            } else {
+                var a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = 'score-sheet-' + new Date().toISOString().slice(0,10) + '.jpg';
+                a.click();
+            }
+        }
+        document.getElementById('save-excel-btn')?.addEventListener('click', saveAsExcel);
+
+        function saveAsPdf() {
+            const sheet = document.querySelector('.sheet');
+            if (!sheet) return;
+            if (typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
+                alert('PDF libraries not loaded. Please check your internet connection.');
+                return;
+            }
+            html2canvas(sheet, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            }).then(function(canvas) {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = jspdf;
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const ratio = imgWidth / imgHeight;
+                let pdfWidth, pdfHeight, orientation;
+                if (ratio > 1) {
+                    orientation = 'landscape';
+                    pdfWidth = 297;
+                    pdfHeight = pdfWidth / ratio;
+                } else {
+                    orientation = 'portrait';
+                    pdfHeight = 297;
+                    pdfWidth = pdfHeight * ratio;
+                }
+                const pdf = new jsPDF(orientation, 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const x = (pageWidth - pdfWidth) / 2;
+                const y = (pageHeight - pdfHeight) / 2;
+                pdf.addImage(imgData, 'PNG', x, y, pdfWidth, pdfHeight);
+                pdf.save('score-sheet-' + new Date().toISOString().slice(0,10) + '.pdf');
+            }).catch(function(err) {
+                console.error('PDF generation error:', err);
+                alert('Error generating PDF');
+            });
+        }
+        document.getElementById('save-pdf-btn')?.addEventListener('click', saveAsPdf);
+
+        function fitSheetToViewport() {
+            const sheet = document.querySelector('.sheet');
+            if (!sheet) return;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const w = sheet.offsetWidth;
+            const h = Math.max(sheet.offsetHeight, sheet.scrollHeight);
+            const scaleX = vw / w;
+            const scaleY = vh / h;
+            sheet.style.transform = 'translate(-50%, -50%) scale(' + scaleX + ', ' + scaleY + ')';
+        }
+        function runFit() {
+            fitSheetToViewport();
+        }
+        function setSummaryRowHeights() {
+            document.querySelectorAll('.summary-row td, .summary-row th').forEach(function(cell) {
+                cell.style.height = '1.75rem';
+                cell.style.minHeight = '1.75rem';
+                cell.style.maxHeight = '1.75rem';
+            });
+            document.querySelectorAll('tr[data-row] td').forEach(function(cell) {
+                cell.style.height = '4.2rem';
+                cell.style.minHeight = '4.2rem';
+                cell.style.maxHeight = '4.2rem';
+            });
+        }
+        setSummaryRowHeights();
+        runFit();
+        window.addEventListener('resize', runFit);
+        window.addEventListener('load', function() {
+            setSummaryRowHeights();
+            runFit();
+            updateTable(homeTable);
+            updateTable(visitorTable);
+            updateHighMan();
+            updateMatchResult();
+        });
+
+    </script>
+</body>
+</html>
