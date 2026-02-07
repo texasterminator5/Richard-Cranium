@@ -873,6 +873,8 @@
             if (excludeVisitor) visitorSelect.value = excludeVisitor;
         }
 
+        // Colors indicate who plays who: home row colors are fixed, visitor colors shift by round.
+        // visitorRow = (homeRow + roundIndex) % 5; homeRow = (visitorRow - roundIndex + 5) % 5
         function getCorrespondingSelect(sourceSelect, sourceTable) {
             const sourceRow = sourceSelect.closest('tr[data-row]');
             if (!sourceRow) return null;
@@ -884,9 +886,16 @@
                 if (cells[i] === sourceCell) { colIdx = i; break; }
             }
             if (colIdx < 2 || colIdx > 6) return null;
+            const roundIndex = colIdx - 2; // 0-4 for rounds 1-5
             const otherTable = sourceTable.id === 'home-table' ? visitorTable : homeTable;
             const otherRows = otherTable.querySelectorAll('tr[data-row]');
-            const otherRow = otherRows[rowIdx];
+            let otherRowIdx;
+            if (sourceTable.id === 'home-table') {
+                otherRowIdx = (rowIdx + roundIndex) % 5;  // home -> visitor: same color shifts down
+            } else {
+                otherRowIdx = (rowIdx - roundIndex + 5) % 5;  // visitor -> home
+            }
+            const otherRow = otherRows[otherRowIdx];
             if (!otherRow) return null;
             const otherCells = otherRow.querySelectorAll('td');
             const otherCell = otherCells[colIdx];
