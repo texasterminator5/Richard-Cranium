@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <title>Multiplication Quiz</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #252542;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #7c9cff;
+      --timer: #5dd39e;
+      --ok: #3ecf8e;
+      --slow: #e8c547;
+      --bad: #e85d75;
+      --pad: max(12px, env(safe-area-inset-top));
+      --pad-b: max(12px, env(safe-area-inset-bottom));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      padding: var(--pad) 16px var(--pad-b);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: clamp(1.25rem, 4vw, 1.5rem);
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .panel {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select {
+      flex: 1;
+      min-width: 160px;
+      font-size: 1.1rem;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 16px 24px;
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.15s;
+      min-height: 52px;
+      touch-action: manipulation;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: linear-gradient(145deg, #6b8cff, #5577ee);
+      color: #fff;
+      width: 100%;
+      font-size: 1.15rem;
+      margin-top: 8px;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .q-meta {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .timer-wrap {
+      text-align: right;
+    }
+
+    .timer-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .timer {
+      font-size: clamp(2rem, 8vw, 2.75rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+      color: var(--timer);
+    }
+
+    .timer.over {
+      color: var(--slow);
+    }
+
+    .question {
+      font-size: clamp(2.5rem, 12vw, 4rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      padding: 20px 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .answer-display {
+      min-height: 72px;
+      border-radius: 14px;
+      background: var(--surface2);
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2rem, 10vw, 3rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 12px;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+
+    .answer-display.pending {
+      border-color: rgba(124, 156, 255, 0.35);
+    }
+
+    .answer-display.feedback-wrong {
+      border-color: var(--bad);
+      background: rgba(232, 93, 117, 0.12);
+      color: #ffb3c0;
+    }
+
+    .answer-display.feedback-slow {
+      border-color: var(--slow);
+      background: rgba(232, 197, 71, 0.12);
+      color: #fff3b8;
+    }
+
+    .answer-display.feedback-ok {
+      border-color: var(--ok);
+      background: rgba(62, 207, 142, 0.12);
+      color: #b8ffd9;
+    }
+
+    .hint {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+      min-height: 1.4em;
+      margin-bottom: 8px;
+    }
+
+    .pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .pad .btn-num {
+      background: var(--surface2);
+      color: var(--text);
+      font-size: clamp(1.5rem, 6vw, 2rem);
+      font-weight: 700;
+      min-height: 64px;
+      padding: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .pad .btn-num:hover,
+    .pad .btn-secondary:hover {
+      filter: brightness(1.08);
+    }
+
+    .pad .btn-wide {
+      grid-column: span 2;
+    }
+
+    .btn-secondary {
+      background: #3a3a55;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 600;
+      min-height: 56px;
+    }
+
+    .btn-enter {
+      background: linear-gradient(145deg, #4ade80, #22c55e);
+      color: #052e14;
+      font-size: clamp(1.2rem, 4vw, 1.5rem);
+      font-weight: 800;
+      min-height: 72px;
+      width: 100%;
+      letter-spacing: 0.04em;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .results {
+      text-align: center;
+    }
+
+    .results h2 {
+      margin: 0 0 16px;
+      font-size: 1.4rem;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+      text-align: left;
+    }
+
+    .stat {
+      background: var(--surface2);
+      padding: 14px;
+      border-radius: 12px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.5rem;
+      margin-top: 4px;
+    }
+
+    .legend {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: left;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+    .legend span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .lg-ok { background: var(--ok); }
+    .lg-slow { background: var(--slow); }
+    .lg-bad { background: var(--bad); }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+
+    .field-error {
+      color: var(--bad);
+      font-size: 0.85rem;
+      margin-top: 6px;
+      min-height: 1.2em;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      font-size: 1.15rem;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    input[type="text"]::placeholder {
+      color: #6a6a80;
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid rgba(124, 156, 255, 0.45);
+      outline-offset: 2px;
+    }
+
+    .results-intro {
+      font-size: 1.05rem;
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .results-intro strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-align: left;
+      margin: 20px 0 10px;
+    }
+
+    .stat-grid.advanced {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (min-width: 480px) {
+      .stat-grid.wide {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .stat small {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 4px;
+      line-height: 1.3;
+    }
+
+    .lb-wrap {
+      text-align: left;
+      margin: 8px 0 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table.lb {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    table.lb th,
+    table.lb td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    table.lb th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    table.lb td.num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    table.lb tr.you {
+      background: rgba(124, 156, 255, 0.12);
+    }
+
+    table.lb .nm {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lb-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn-row .btn {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 8px 0 0;
+    }
+
+    table.mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    table.mini th,
+    table.mini td {
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    table.mini th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    table.mini td.num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    table.mini tr.weak {
+      background: rgba(232, 93, 117, 0.08);
+    }
+
+    .history-panel {
+      margin-top: 8px;
+    }
+
+    .empty-hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multiplication quiz</h1>
+  <p class="sub">40 questions. Both numbers are chosen from 1 through your max. You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
+
+  <div id="screen-setup" class="panel">
+    <label for="playerName">Your name (for the leaderboard)</label>
+    <input type="text" id="playerName" maxlength="32" autocomplete="nickname" placeholder="e.g. Alex" />
+    <p class="field-error" id="nameError" aria-live="polite"></p>
+    <label for="maxFactor">Highest number in each factor (1–12)</label>
+    <div class="row">
+      <select id="maxFactor" aria-label="Maximum factor"></select>
+    </div>
+    <div class="section-title" style="margin-top: 16px;">Recent runs</div>
+    <div id="setupHistoryWrap" class="lb-wrap history-panel">
+      <p class="empty-hint" id="setupHistoryEmpty">No saved runs yet. Finish a quiz to build history.</p>
+      <div class="table-wrap hidden" id="setupHistoryTableWrap">
+        <table class="mini" aria-label="Recent quiz runs">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Name</th>
+              <th class="num">Max</th>
+              <th class="num">G/Y/R</th>
+              <th class="num">Acc</th>
+            </tr>
+          </thead>
+          <tbody id="setupHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" id="btnStart">Start quiz</button>
+  </div>
+
+  <div id="screen-quiz" class="hidden">
+    <div class="quiz-header">
+      <span class="q-meta">Question <span id="qIndex">1</span> / 40</span>
+      <div class="timer-wrap">
+        <div class="timer-label">Seconds</div>
+        <div class="timer" id="timerDisplay" aria-live="polite">8.0</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="question" id="questionText">0 × 0</div>
+      <div class="answer-display pending" id="answerDisplay" aria-live="polite">&nbsp;</div>
+      <p class="hint" id="hintText"></p>
+      <div class="pad" id="numpad"></div>
+      <button type="button" class="btn btn-enter" id="btnEnter">Enter</button>
+    </div>
+  </div>
+
+  <div id="screen-results" class="panel hidden results">
+    <h2>Finished</h2>
+    <div class="stat-grid">
+      <div class="stat">Green (≤8s, correct)<strong id="statGreen">0</strong></div>
+      <div class="stat">Yellow (correct, slow)<strong id="statYellow">0</strong></div>
+      <div class="stat">Red (wrong)<strong id="statRed">0</strong></div>
+      <div class="stat">Accuracy<strong id="statAcc">0%</strong></div>
+    </div>
+    <p class="legend">
+      <span class="lg-ok"></span> Correct within 8 seconds<br />
+      <span class="lg-slow"></span> Correct after 8 seconds<br />
+      <span class="lg-bad"></span> Incorrect
+    </p>
+
+    <div class="section-title">Advanced stats (this run)</div>
+    <div class="stat-grid advanced wide" id="advancedStatsGrid">
+      <div class="stat">Avg. time (all)<strong id="statAvgAll">—</strong><small>Mean seconds per question</small></div>
+      <div class="stat">Avg. time (correct)<strong id="statAvgCorrect">—</strong><small>When you got it right</small></div>
+      <div class="stat">Fastest correct<strong id="statFastest">—</strong><small>Best single answer</small></div>
+      <div class="stat">Slowest answer<strong id="statSlowest">—</strong><small>Includes wrong</small></div>
+      <div class="stat">Best streak<strong id="statStreak">—</strong><small>Correct in a row</small></div>
+      <div class="stat">Score<strong id="statScore">—</strong><small>Green×3 + Yellow×1</small></div>
+    </div>
+
+    <div class="section-title">Weakest factors (this run)</div>
+    <p class="lb-note">Accuracy when either factor was that number (more misses = harder row).</p>
+    <div class="table-wrap">
+      <table class="mini" id="factorTable" aria-label="Accuracy by factor">
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th class="num">Asked</th>
+            <th class="num">Right</th>
+            <th class="num">%</th>
+          </tr>
+        </thead>
+        <tbody id="factorTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">Leaderboard history</div>
+    <p class="lb-note">Stored on this device (last 40 runs). Sorted by score, then green count.</p>
+    <div class="lb-wrap">
+      <table class="lb" id="leaderboardTable" aria-label="Leaderboard history">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>When</th>
+            <th>Name</th>
+            <th class="num">Max</th>
+            <th class="num">G</th>
+            <th class="num">Y</th>
+            <th class="num">R</th>
+            <th class="num">Acc</th>
+            <th class="num">Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="btnAgain">Play again</button>
+      <button type="button" class="btn btn-ghost" id="btnClearHistory">Clear history</button>
+    </div>
+  </div>
+
+  <footer>Works offline · Add to home screen for a quick app-like experience</footer>
+
+  <script>
+    (function () {
+      const TOTAL = 40;
+      const TIME_LIMIT_MS = 8000;
+
+      const maxFactorEl = document.getElementById("maxFactor");
+      const btnStart = document.getElementById("btnStart");
+      const screenSetup = document.getElementById("screen-setup");
+      const screenQuiz = document.getElementById("screen-quiz");
+      const screenResults = document.getElementById("screen-results");
+      const qIndexEl = document.getElementById("qIndex");
+      const questionText = document.getElementById("questionText");
+      const answerDisplay = document.getElementById("answerDisplay");
+      const hintText = document.getElementById("hintText");
+      const timerDisplay = document.getElementById("timerDisplay");
+      const numpad = document.getElementById("numpad");
+      const btnEnter = document.getElementById("btnEnter");
+      const btnAgain = document.getElementById("btnAgain");
+      const statGreen = document.getElementById("statGreen");
+      const statYellow = document.getElementById("statYellow");
+      const statRed = document.getElementById("statRed");
+      const statAcc = document.getElementById("statAcc");
+      const playerNameEl = document.getElementById("playerName");
+      const nameError = document.getElementById("nameError");
+      const statAvgAll = document.getElementById("statAvgAll");
+      const statAvgCorrect = document.getElementById("statAvgCorrect");
+      const statFastest = document.getElementById("statFastest");
+      const statSlowest = document.getElementById("statSlowest");
+      const statStreak = document.getElementById("statStreak");
+      const statScore = document.getElementById("statScore");
+      const factorTableBody = document.getElementById("factorTableBody");
+      const leaderboardBody = document.getElementById("leaderboardBody");
+      const setupHistoryBody = document.getElementById("setupHistoryBody");
+      const setupHistoryEmpty = document.getElementById("setupHistoryEmpty");
+      const setupHistoryTableWrap = document.getElementById("setupHistoryTableWrap");
+      const btnClearHistory = document.getElementById("btnClearHistory");
+
+      const LS_KEY = "mq_quiz_history_v1";
+      const MAX_HISTORY = 40;
+      const RECENT_SETUP_ROWS = 10;
+
+      for (let i = 1; i <= 12; i++) {
+        const o = document.createElement("option");
+        o.value = String(i);
+        o.textContent = i + (i === 12 ? " (through 12’s)" : "");
+        maxFactorEl.appendChild(o);
+      }
+      maxFactorEl.value = "12";
+
+      const keys = [
+        "1", "2", "3",
+        "4", "5", "6",
+        "7", "8", "9",
+        "clear", "0", "back"
+      ];
+
+      keys.forEach(function (k) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn btn-num";
+        if (k === "clear") {
+          b.textContent = "Clear";
+          b.dataset.action = "clear";
+        } else if (k === "back") {
+          b.textContent = "⌫";
+          b.dataset.action = "back";
+        } else {
+          b.textContent = k;
+          b.dataset.digit = k;
+        }
+        numpad.appendChild(b);
+      });
+
+      let maxFactor = 12;
+      let questions = [];
+      let qPos = 0;
+      let currentA = 0;
+      let currentB = 0;
+      let inputStr = "";
+      let questionStartMs = 0;
+      let rafId = 0;
+      let awaitingNext = false;
+      let counts = { green: 0, yellow: 0, red: 0 };
+      let questionLog = [];
+
+      function randInt(min, max) {
+        return min + Math.floor(Math.random() * (max - min + 1));
+      }
+
+      function buildQuestions(m) {
+        const list = [];
+        for (let i = 0; i < TOTAL; i++) {
+          list.push({
+            a: randInt(1, m),
+            b: randInt(1, m)
+          });
+        }
+        return list;
+      }
+
+      function cancelTimer() {
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      }
+
+      function tickTimer() {
+        const elapsed = Date.now() - questionStartMs;
+        const remain = (TIME_LIMIT_MS - elapsed) / 1000;
+        if (remain > 0) {
+          timerDisplay.textContent = remain.toFixed(1);
+          timerDisplay.classList.remove("over");
+        } else {
+          timerDisplay.textContent = "+" + ((elapsed - TIME_LIMIT_MS) / 1000).toFixed(1);
+          timerDisplay.classList.add("over");
+        }
+        if (!awaitingNext) {
+          rafId = requestAnimationFrame(tickTimer);
+        }
+      }
+
+      function startQuestionTimer() {
+        cancelTimer();
+        questionStartMs = Date.now();
+        timerDisplay.classList.remove("over");
+        rafId = requestAnimationFrame(tickTimer);
+      }
+
+      function showQuestion() {
+        awaitingNext = false;
+        const q = questions[qPos];
+        currentA = q.a;
+        currentB = q.b;
+        inputStr = "";
+        answerDisplay.textContent = "\u00a0";
+        answerDisplay.className = "answer-display pending";
+        hintText.textContent = "";
+        qIndexEl.textContent = String(qPos + 1);
+        questionText.textContent = currentA + " × " + currentB;
+        btnEnter.disabled = false;
+        startQuestionTimer();
+      }
+
+      function parseAnswer() {
+        if (inputStr === "") return null;
+        const n = parseInt(inputStr, 10);
+        return isNaN(n) ? null : n;
+      }
+
+      function submitAnswer() {
+        if (awaitingNext) return;
+        const elapsed = Date.now() - questionStartMs;
+        const correctVal = currentA * currentB;
+        const userVal = parseAnswer();
+        const isCorrect = userVal === correctVal;
+
+        cancelTimer();
+        awaitingNext = true;
+        btnEnter.disabled = true;
+
+        let outcome;
+        if (!isCorrect) {
+          outcome = "red";
+          counts.red++;
+          answerDisplay.className = "answer-display feedback-wrong";
+          answerDisplay.textContent = userVal == null ? "—" : String(userVal);
+          hintText.textContent = "Correct answer: " + correctVal;
+        } else if (elapsed <= TIME_LIMIT_MS) {
+          outcome = "green";
+          counts.green++;
+          answerDisplay.className = "answer-display feedback-ok";
+          answerDisplay.textContent = String(userVal);
+          hintText.textContent = "Nice — within 8 seconds.";
+        } else {
+          outcome = "yellow";
+          counts.yellow++;
+          answerDisplay.className = "answer-display feedback-slow";
+          answerDisplay.textContent = String(userVal);
+          hintText.textContent = "Correct, but over 8 seconds.";
+        }
+
+        questionLog.push({
+          a: currentA,
+          b: currentB,
+          elapsedMs: elapsed,
+          outcome: outcome
+        });
+
+        setTimeout(advance, 900);
+      }
+
+      function advance() {
+        qPos++;
+        if (qPos >= TOTAL) {
+          finishQuiz();
+          return;
+        }
+        showQuestion();
+      }
+
+      function formatSeconds(ms) {
+        return (ms / 1000).toFixed(2) + "s";
+      }
+
+      function formatWhen(ts) {
+        try {
+          const d = new Date(ts);
+          return d.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+        } catch (e) {
+          return "—";
+        }
+      }
+
+      function loadHistory() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function saveHistory(entries) {
+        try {
+          localStorage.setItem(LS_KEY, JSON.stringify(entries));
+        } catch (e) {}
+      }
+
+      function runScore(g, y) {
+        return g * 3 + y;
+      }
+
+      function computeAdvanced(log, mf) {
+        const n = log.length;
+        let sumAll = 0;
+        let sumCorrect = 0;
+        let nCorrect = 0;
+        let fastest = Infinity;
+        let slowest = 0;
+        let streak = 0;
+        let bestStreak = 0;
+
+        for (let i = 0; i < n; i++) {
+          const row = log[i];
+          sumAll += row.elapsedMs;
+          if (row.outcome !== "red") {
+            sumCorrect += row.elapsedMs;
+            nCorrect++;
+            if (row.elapsedMs < fastest) fastest = row.elapsedMs;
+            streak++;
+            if (streak > bestStreak) bestStreak = streak;
+          } else {
+            streak = 0;
+          }
+          if (row.elapsedMs > slowest) slowest = row.elapsedMs;
+        }
+
+        const factorAsked = {};
+        const factorRight = {};
+        for (let k = 1; k <= mf; k++) {
+          factorAsked[k] = 0;
+          factorRight[k] = 0;
+        }
+        for (let i = 0; i < n; i++) {
+          const row = log[i];
+          const ok = row.outcome !== "red";
+          if (row.a === row.b) {
+            const k = row.a;
+            if (k >= 1 && k <= mf) {
+              factorAsked[k]++;
+              if (ok) factorRight[k]++;
+            }
+          } else {
+            if (row.a >= 1 && row.a <= mf) {
+              factorAsked[row.a]++;
+              if (ok) factorRight[row.a]++;
+            }
+            if (row.b >= 1 && row.b <= mf) {
+              factorAsked[row.b]++;
+              if (ok) factorRight[row.b]++;
+            }
+          }
+        }
+
+        return {
+          avgAllMs: n ? sumAll / n : 0,
+          avgCorrectMs: nCorrect ? sumCorrect / nCorrect : null,
+          fastestMs: nCorrect && isFinite(fastest) ? fastest : null,
+          slowestMs: n ? slowest : null,
+          bestStreak: bestStreak,
+          factorAsked: factorAsked,
+          factorRight: factorRight
+        };
+      }
+
+      function renderFactorRows(mf, asked, right) {
+        factorTableBody.innerHTML = "";
+        const rows = [];
+        for (let k = 1; k <= mf; k++) {
+          const a = asked[k] || 0;
+          const r = right[k] || 0;
+          const pct = a ? Math.round((r / a) * 100) : 100;
+          rows.push({ k: k, asked: a, right: r, pct: pct });
+        }
+        rows.sort(function (x, y) {
+          return x.pct - y.pct || y.asked - x.asked;
+        });
+        const weakestPct = rows.length && rows[0].asked >= 2 ? rows[0].pct : null;
+        rows.forEach(function (row) {
+          const tr = document.createElement("tr");
+          const isWeak =
+            row.asked >= 2 &&
+            weakestPct !== null &&
+            row.pct === weakestPct &&
+            row.pct < 100;
+          if (isWeak) tr.classList.add("weak");
+          tr.innerHTML =
+            "<td>" +
+            row.k +
+            "×</td><td class=\"num\">" +
+            row.asked +
+            "</td><td class=\"num\">" +
+            row.right +
+            "</td><td class=\"num\">" +
+            row.pct +
+            "%</td>";
+          factorTableBody.appendChild(tr);
+        });
+      }
+
+      function renderLeaderboard(entries) {
+        leaderboardBody.innerHTML = "";
+        const sorted = entries
+          .slice()
+          .sort(function (a, b) {
+            const sa = runScore(a.green, a.yellow);
+            const sb = runScore(b.green, b.yellow);
+            if (sb !== sa) return sb - sa;
+            if (b.green !== a.green) return b.green - a.green;
+            return (b.ts || 0) - (a.ts || 0);
+          });
+        sorted.forEach(function (entry, idx) {
+          const tr = document.createElement("tr");
+          const acc =
+            typeof entry.accuracyPct === "number"
+              ? Math.round(entry.accuracyPct) + "%"
+              : "—";
+          const sc = runScore(entry.green, entry.yellow);
+          tr.innerHTML =
+            "<td>" +
+            (idx + 1) +
+            "</td><td>" +
+            formatWhen(entry.ts) +
+            "</td><td class=\"nm\">" +
+            escapeHtml(entry.name || "—") +
+            "</td><td class=\"num\">" +
+            entry.maxFactor +
+            "</td><td class=\"num\">" +
+            entry.green +
+            "</td><td class=\"num\">" +
+            entry.yellow +
+            "</td><td class=\"num\">" +
+            entry.red +
+            "</td><td class=\"num\">" +
+            acc +
+            "</td><td class=\"num\">" +
+            sc +
+            "</td>";
+          leaderboardBody.appendChild(tr);
+        });
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderSetupHistory() {
+        const entries = loadHistory();
+        setupHistoryBody.innerHTML = "";
+        if (!entries.length) {
+          setupHistoryEmpty.classList.remove("hidden");
+          setupHistoryTableWrap.classList.add("hidden");
+          return;
+        }
+        setupHistoryEmpty.classList.add("hidden");
+        setupHistoryTableWrap.classList.remove("hidden");
+        const recent = entries.slice(0, RECENT_SETUP_ROWS);
+        recent.forEach(function (entry) {
+          const tr = document.createElement("tr");
+          const acc =
+            typeof entry.accuracyPct === "number"
+              ? Math.round(entry.accuracyPct) + "%"
+              : "—";
+          tr.innerHTML =
+            "<td>" +
+            formatWhen(entry.ts) +
+            "</td><td class=\"nm\">" +
+            escapeHtml(entry.name || "—") +
+            "</td><td class=\"num\">" +
+            entry.maxFactor +
+            "</td><td class=\"num\">" +
+            entry.green +
+            "/" +
+            entry.yellow +
+            "/" +
+            entry.red +
+            "</td><td class=\"num\">" +
+            acc +
+            "</td>";
+          setupHistoryBody.appendChild(tr);
+        });
+      }
+
+      function finishQuiz() {
+        cancelTimer();
+        screenQuiz.classList.add("hidden");
+        screenResults.classList.remove("hidden");
+        statGreen.textContent = String(counts.green);
+        statYellow.textContent = String(counts.yellow);
+        statRed.textContent = String(counts.red);
+        const correct = counts.green + counts.yellow;
+        const accuracyPct = (correct / TOTAL) * 100;
+        statAcc.textContent = Math.round(accuracyPct) + "%";
+
+        const adv = computeAdvanced(questionLog, maxFactor);
+        statAvgAll.textContent = formatSeconds(adv.avgAllMs);
+        statAvgCorrect.textContent =
+          adv.avgCorrectMs != null ? formatSeconds(adv.avgCorrectMs) : "—";
+        statFastest.textContent =
+          adv.fastestMs != null ? formatSeconds(adv.fastestMs) : "—";
+        statSlowest.textContent =
+          adv.slowestMs != null ? formatSeconds(adv.slowestMs) : "—";
+        statStreak.textContent = String(adv.bestStreak);
+        statScore.textContent = String(runScore(counts.green, counts.yellow));
+
+        renderFactorRows(maxFactor, adv.factorAsked, adv.factorRight);
+
+        const name = (playerNameEl.value || "").trim() || "Player";
+        const entry = {
+          ts: Date.now(),
+          name: name.slice(0, 32),
+          maxFactor: maxFactor,
+          green: counts.green,
+          yellow: counts.yellow,
+          red: counts.red,
+          accuracyPct: accuracyPct,
+          avgCorrectMs: adv.avgCorrectMs,
+          bestStreak: adv.bestStreak,
+          score: runScore(counts.green, counts.yellow)
+        };
+        const history = loadHistory();
+        history.unshift(entry);
+        saveHistory(history.slice(0, MAX_HISTORY));
+        renderLeaderboard(loadHistory());
+        renderSetupHistory();
+      }
+
+      function startQuiz() {
+        const rawName = (playerNameEl.value || "").trim();
+        if (!rawName) {
+          nameError.textContent = "Enter your name to save runs to the leaderboard.";
+          playerNameEl.focus();
+          return;
+        }
+        nameError.textContent = "";
+        maxFactor = parseInt(maxFactorEl.value, 10) || 12;
+        questions = buildQuestions(maxFactor);
+        qPos = 0;
+        counts = { green: 0, yellow: 0, red: 0 };
+        questionLog = [];
+        screenSetup.classList.add("hidden");
+        screenResults.classList.add("hidden");
+        screenQuiz.classList.remove("hidden");
+        showQuestion();
+      }
+
+      function onDigit(d) {
+        if (awaitingNext) return;
+        if (inputStr.length >= 5) return;
+        inputStr += d;
+        answerDisplay.textContent = inputStr;
+      }
+
+      function onBack() {
+        if (awaitingNext) return;
+        inputStr = inputStr.slice(0, -1);
+        answerDisplay.textContent = inputStr === "" ? "\u00a0" : inputStr;
+      }
+
+      function onClear() {
+        if (awaitingNext) return;
+        inputStr = "";
+        answerDisplay.textContent = "\u00a0";
+      }
+
+      numpad.addEventListener("click", function (e) {
+        const t = e.target.closest("button");
+        if (!t) return;
+        if (t.dataset.digit) onDigit(t.dataset.digit);
+        else if (t.dataset.action === "back") onBack();
+        else if (t.dataset.action === "clear") onClear();
+      });
+
+      btnEnter.addEventListener("click", submitAnswer);
+
+      document.addEventListener("keydown", function (e) {
+        if (!screenQuiz.classList.contains("hidden") && !awaitingNext) {
+          if (e.key >= "0" && e.key <= "9") {
+            e.preventDefault();
+            onDigit(e.key);
+          } else if (e.key === "Backspace") {
+            e.preventDefault();
+            onBack();
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            submitAnswer();
+          } else if (e.key === "Escape") {
+            onClear();
+          }
+        }
+      });
+
+      btnStart.addEventListener("click", startQuiz);
+      btnAgain.addEventListener("click", function () {
+        screenResults.classList.add("hidden");
+        screenSetup.classList.remove("hidden");
+      });
+
+      btnClearHistory.addEventListener("click", function () {
+        if (
+          !window.confirm(
+            "Remove all saved runs from this device?"
+          )
+        ) {
+          return;
+        }
+        saveHistory([]);
+        renderLeaderboard([]);
+        renderSetupHistory();
+      });
+
+      renderSetupHistory();
+    })();
+  </script>
+</body>
+</html>
