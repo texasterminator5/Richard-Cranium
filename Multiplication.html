@@ -126,6 +126,24 @@
       margin-bottom: 8px;
     }
 
+    .sound-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      cursor: pointer;
+      user-select: none;
+      margin: 16px 0 12px;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .sound-row input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+    }
+
     .row {
       display: flex;
       flex-wrap: wrap;
@@ -229,6 +247,21 @@
       letter-spacing: 0.02em;
     }
 
+    .question.q-pop {
+      animation: questionIn 0.38s ease;
+    }
+
+    @keyframes questionIn {
+      from {
+        opacity: 0.65;
+        transform: scale(0.94);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
     .answer-display {
       min-height: 72px;
       border-radius: 14px;
@@ -264,6 +297,188 @@
       border-color: var(--ok);
       background: rgba(62, 207, 142, 0.12);
       color: #b8ffd9;
+    }
+
+    @keyframes feedbackPopGreen {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(62, 207, 142, 0); }
+      35% { transform: scale(1.06); box-shadow: 0 0 28px rgba(62, 207, 142, 0.55); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(62, 207, 142, 0); }
+    }
+
+    @keyframes feedbackPopYellow {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px) rotate(-1deg); }
+      75% { transform: translateX(6px) rotate(1deg); }
+    }
+
+    @keyframes feedbackPopRed {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    .answer-display.anim-green {
+      animation: feedbackPopGreen 0.55s ease;
+    }
+
+    .answer-display.anim-yellow {
+      animation: feedbackPopYellow 0.5s ease;
+    }
+
+    .answer-display.anim-red {
+      animation: feedbackPopRed 0.45s ease;
+    }
+
+    .result-hero {
+      text-align: center;
+      margin: 0 0 20px;
+      padding: 12px 8px 8px;
+    }
+
+    .result-deco {
+      font-size: 1rem;
+      letter-spacing: 0.5em;
+      margin-bottom: 8px;
+      opacity: 0.9;
+      min-height: 1.2em;
+    }
+
+    .result-hero.tier-perfect .result-deco {
+      color: var(--slow);
+    }
+
+    .result-hero.tier-almost .result-deco {
+      color: var(--slow);
+      letter-spacing: 0.35em;
+    }
+
+    .result-hero.tier-failed .result-deco {
+      color: var(--bad);
+      letter-spacing: 0.25em;
+    }
+
+    .result-title {
+      font-size: clamp(1.75rem, 6vw, 2.25rem);
+      font-weight: 800;
+      margin: 0 0 6px;
+      letter-spacing: -0.03em;
+      animation: victoryTitleIn 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .result-hero.tier-perfect .result-title {
+      background: linear-gradient(135deg, #9ae6b4, #5dd39e, #7c9cff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .result-hero.tier-almost .result-title {
+      background: linear-gradient(135deg, #f6e08a, #e8c547, #c9a227);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .result-hero.tier-failed .result-title {
+      background: linear-gradient(135deg, #ff8a9e, #e85d75, #b84058);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .result-sub {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--muted);
+      animation: victorySubIn 0.7s ease 0.15s both;
+    }
+
+    @keyframes victoryTitleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.85) translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    @keyframes victorySubIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-grid.victory-pop .stat {
+      animation: statPop 0.5s ease both;
+    }
+
+    .stat-grid.victory-pop .stat:nth-child(1) { animation-delay: 0.05s; }
+    .stat-grid.victory-pop .stat:nth-child(2) { animation-delay: 0.1s; }
+    .stat-grid.victory-pop .stat:nth-child(3) { animation-delay: 0.15s; }
+    .stat-grid.victory-pop .stat:nth-child(4) { animation-delay: 0.2s; }
+
+    @keyframes statPop {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .confetti-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 200;
+      overflow: hidden;
+    }
+
+    .confetti-layer.hidden {
+      display: none;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      top: -16px;
+      width: 10px;
+      height: 14px;
+      border-radius: 2px;
+      opacity: 0.95;
+      animation: confettiFall 2.8s linear forwards;
+    }
+
+    @keyframes confettiFall {
+      to {
+        transform: translateY(110vh) translateX(var(--drift, 0)) rotate(1080deg);
+        opacity: 0.85;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .answer-display.anim-green,
+      .answer-display.anim-yellow,
+      .answer-display.anim-red {
+        animation: none;
+      }
+      .question.q-pop {
+        animation: none;
+      }
+      .result-title,
+      .result-sub {
+        animation: none;
+      }
+      .stat-grid.victory-pop .stat {
+        animation: none;
+      }
+      .confetti-piece {
+        animation-duration: 0.01s;
+      }
     }
 
     .hint {
@@ -316,6 +531,12 @@
       min-height: 72px;
       width: 100%;
       letter-spacing: 0.04em;
+    }
+
+    .btn-enter:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .hidden {
@@ -562,15 +783,24 @@
 </head>
 <body>
   <h1>Multiplication quiz</h1>
-  <p class="sub">40 questions. Both numbers are chosen from 1 through your max. You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
+  <p class="sub">Pick how many questions to play. Each run uses one times table: <strong>Through N</strong> means N×1 up through N×12 (e.g. Through 1 is 1×1 … 1×12). You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
 
   <div id="screen-setup" class="panel">
     <label for="playerName">Your name (for the leaderboard)</label>
     <input type="text" id="playerName" maxlength="32" autocomplete="nickname" placeholder="e.g. Alex" />
     <p class="field-error" id="nameError" aria-live="polite"></p>
-    <label for="maxFactor">Highest number in each factor (1–12)</label>
+    <label for="quizLength">Quiz length</label>
     <div class="row">
-      <select id="maxFactor" aria-label="Maximum factor"></select>
+      <select id="quizLength" aria-label="Number of questions in the quiz">
+        <option value="10">10 questions</option>
+        <option value="20">20 questions</option>
+        <option value="30">30 questions</option>
+        <option value="40" selected>40 questions</option>
+      </select>
+    </div>
+    <label for="maxFactor">Times table</label>
+    <div class="row">
+      <select id="maxFactor" aria-label="Times table: N×1 through N×12"></select>
     </div>
     <div class="section-title" style="margin-top: 16px;">Recent runs</div>
     <div id="setupHistoryWrap" class="lb-wrap history-panel">
@@ -581,6 +811,7 @@
             <tr>
               <th>When</th>
               <th>Name</th>
+              <th class="num">Qs</th>
               <th class="num">Max</th>
               <th class="num">G/Y/R</th>
               <th class="num">Acc</th>
@@ -590,12 +821,16 @@
         </table>
       </div>
     </div>
+    <label class="sound-row" for="soundToggle">
+      <input type="checkbox" id="soundToggle" checked />
+      Sound &amp; music (quiz + victory)
+    </label>
     <button type="button" class="btn btn-primary" id="btnStart">Start quiz</button>
   </div>
 
   <div id="screen-quiz" class="hidden">
     <div class="quiz-header">
-      <span class="q-meta">Question <span id="qIndex">1</span> / 40</span>
+      <span class="q-meta">Question <span id="qIndex">1</span> / <span id="qTotal">40</span></span>
       <div class="timer-wrap">
         <div class="timer-label">Seconds</div>
         <div class="timer" id="timerDisplay" aria-live="polite">8.0</div>
@@ -611,9 +846,15 @@
     </div>
   </div>
 
+  <div id="confettiLayer" class="confetti-layer hidden" aria-hidden="true"></div>
+
   <div id="screen-results" class="panel hidden results">
-    <h2>Finished</h2>
-    <div class="stat-grid">
+    <div class="result-hero tier-perfect" id="resultHero">
+      <div class="result-deco" id="resultDeco" aria-hidden="true">✦ ✦ ✦</div>
+      <h2 class="result-title" id="resultTitle">Victory!</h2>
+      <p class="result-sub" id="resultSub">Perfect — 100% correct, all green, all within 8 seconds.</p>
+    </div>
+    <div class="stat-grid victory-pop" id="resultsStatGrid">
       <div class="stat">Green (≤8s, correct)<strong id="statGreen">0</strong></div>
       <div class="stat">Yellow (correct, slow)<strong id="statYellow">0</strong></div>
       <div class="stat">Red (wrong)<strong id="statRed">0</strong></div>
@@ -661,6 +902,7 @@
             <th>When</th>
             <th>Name</th>
             <th class="num">Max</th>
+            <th class="num">Qs</th>
             <th class="num">G</th>
             <th class="num">Y</th>
             <th class="num">R</th>
@@ -682,15 +924,17 @@
 
   <script>
     (function () {
-      const TOTAL = 40;
       const TIME_LIMIT_MS = 8000;
+      const TABLE_MAX = 12;
 
+      const quizLengthEl = document.getElementById("quizLength");
       const maxFactorEl = document.getElementById("maxFactor");
       const btnStart = document.getElementById("btnStart");
       const screenSetup = document.getElementById("screen-setup");
       const screenQuiz = document.getElementById("screen-quiz");
       const screenResults = document.getElementById("screen-results");
       const qIndexEl = document.getElementById("qIndex");
+      const qTotalEl = document.getElementById("qTotal");
       const questionText = document.getElementById("questionText");
       const answerDisplay = document.getElementById("answerDisplay");
       const hintText = document.getElementById("hintText");
@@ -717,18 +961,44 @@
       const setupHistoryTableWrap = document.getElementById("setupHistoryTableWrap");
       const btnClearHistory = document.getElementById("btnClearHistory");
       const btnQuizRestart = document.getElementById("btnQuizRestart");
+      const soundToggle = document.getElementById("soundToggle");
+      const confettiLayer = document.getElementById("confettiLayer");
+      const resultsStatGrid = document.getElementById("resultsStatGrid");
+      const resultHero = document.getElementById("resultHero");
+      const resultTitle = document.getElementById("resultTitle");
+      const resultSub = document.getElementById("resultSub");
+      const resultDeco = document.getElementById("resultDeco");
 
       const LS_KEY = "mq_quiz_history_v1";
+      const LS_SOUND = "mq_sound_on_v1";
       const MAX_HISTORY = 40;
       const RECENT_SETUP_ROWS = 10;
 
       for (let i = 1; i <= 12; i++) {
         const o = document.createElement("option");
         o.value = String(i);
-        o.textContent = i + (i === 12 ? " (through 12’s)" : "");
+        o.textContent = "Through " + i;
         maxFactorEl.appendChild(o);
       }
       maxFactorEl.value = "12";
+
+      try {
+        const sp = localStorage.getItem(LS_SOUND);
+        if (sp === "0") soundToggle.checked = false;
+        else if (sp === "1") soundToggle.checked = true;
+      } catch (e) {}
+
+      soundToggle.addEventListener("change", function () {
+        try {
+          localStorage.setItem(LS_SOUND, soundToggle.checked ? "1" : "0");
+        } catch (e) {}
+        if (!soundToggle.checked) {
+          stopBgMusic();
+        } else if (!screenQuiz.classList.contains("hidden")) {
+          initAudio();
+          startBgMusic();
+        }
+      });
 
       const keys = [
         "1", "2", "3",
@@ -754,6 +1024,7 @@
         numpad.appendChild(b);
       });
 
+      let quizLength = 40;
       let maxFactor = 12;
       let questions = [];
       let qPos = 0;
@@ -767,6 +1038,224 @@
       let counts = { green: 0, yellow: 0, red: 0 };
       let questionLog = [];
 
+      let audioCtx = null;
+      let bgMusicInterval = null;
+
+      function soundEnabled() {
+        return soundToggle.checked;
+      }
+
+      function initAudio() {
+        try {
+          if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) audioCtx = new AC();
+          }
+          if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+        } catch (e) {}
+      }
+
+      function playSlideDown(fromF, toF, delaySec, duration, gainVal) {
+        if (!audioCtx) return;
+        const t0 = audioCtx.currentTime + delaySec;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(fromF, t0);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(toF, 55), t0 + duration);
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(gainVal, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + duration + 0.02);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + duration + 0.1);
+      }
+
+      function playTone(freq, delaySec, duration, type, gainVal) {
+        if (!audioCtx) return;
+        const t0 = audioCtx.currentTime + delaySec;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, t0);
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(gainVal, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + Math.max(duration, 0.05));
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + duration + 0.08);
+      }
+
+      function playFeedbackSound(outcome) {
+        if (!soundEnabled()) return;
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          if (outcome === "green") {
+            playTone(523.25, 0, 0.11, "sine", 0.11);
+            playTone(659.25, 0.07, 0.11, "sine", 0.1);
+            playTone(783.99, 0.14, 0.16, "sine", 0.09);
+          } else if (outcome === "yellow") {
+            playTone(392, 0, 0.18, "triangle", 0.1);
+            playTone(349.23, 0.09, 0.16, "triangle", 0.08);
+          } else {
+            playTone(155, 0, 0.12, "sawtooth", 0.07);
+            playTone(116, 0.1, 0.18, "sawtooth", 0.06);
+          }
+        } catch (e) {}
+      }
+
+      function playVictoryFanfare() {
+        if (!soundEnabled()) return;
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          const notes = [392, 493.88, 587.33, 698.46, 783.99, 1046.5];
+          notes.forEach(function (f, i) {
+            playTone(f, i * 0.1, 0.32, "triangle", 0.09);
+          });
+        } catch (e) {}
+      }
+
+      function playNeutralAlmostMusic() {
+        if (!soundEnabled()) return;
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          const notes = [261.63, 293.66, 329.63, 293.66, 246.94, 220, 196];
+          notes.forEach(function (f, i) {
+            playTone(f, i * 0.2, 0.24, "sine", 0.065);
+          });
+        } catch (e) {}
+      }
+
+      function playFailureWahWah() {
+        if (!soundEnabled()) return;
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          playSlideDown(300, 130, 0, 0.42, 0.11);
+          playSlideDown(270, 115, 0.48, 0.44, 0.1);
+          playSlideDown(240, 95, 1.0, 0.58, 0.1);
+        } catch (e) {}
+      }
+
+      function startBgMusic() {
+        stopBgMusic();
+        if (!soundEnabled()) return;
+        initAudio();
+        if (!audioCtx) return;
+        const pent = [196, 220, 246.94, 293.66, 329.63];
+        bgMusicInterval = window.setInterval(function () {
+          if (!soundEnabled() || !audioCtx) return;
+          try {
+            if (audioCtx.state === "suspended") audioCtx.resume();
+            const f = pent[Math.floor(Math.random() * pent.length)];
+            playTone(f, 0, 0.2, "sine", 0.026);
+          } catch (e) {}
+        }, 820);
+      }
+
+      function stopBgMusic() {
+        if (bgMusicInterval) {
+          window.clearInterval(bgMusicInterval);
+          bgMusicInterval = null;
+        }
+      }
+
+      function burstConfetti() {
+        if (!confettiLayer) return;
+        confettiLayer.innerHTML = "";
+        confettiLayer.classList.remove("hidden");
+        const colors = [
+          "#7c9cff",
+          "#5dd39e",
+          "#e8c547",
+          "#e8e8f0",
+          "#3ecf8e",
+          "#e85d75"
+        ];
+        for (let i = 0; i < 42; i++) {
+          const p = document.createElement("div");
+          p.className = "confetti-piece";
+          p.style.left = Math.random() * 100 + "%";
+          p.style.animationDelay = Math.random() * 0.35 + "s";
+          p.style.setProperty(
+            "--drift",
+            (Math.random() - 0.5) * 180 + "px"
+          );
+          p.style.background = colors[i % colors.length];
+          if (Math.random() > 0.5) {
+            p.style.borderRadius = "50%";
+            p.style.width = "8px";
+            p.style.height = "8px";
+          }
+          confettiLayer.appendChild(p);
+        }
+        window.setTimeout(function () {
+          confettiLayer.classList.add("hidden");
+          confettiLayer.innerHTML = "";
+        }, 3200);
+      }
+
+      function computeResultTier(g, y, r) {
+        if (r > 0) return "failed";
+        if (y > 0) return "almost";
+        if (g === quizLength && y === 0 && r === 0) return "perfect";
+        return "failed";
+      }
+
+      function applyResultTier(tier) {
+        if (!resultHero || !resultTitle || !resultSub || !resultDeco) return;
+        resultHero.classList.remove("tier-perfect", "tier-almost", "tier-failed");
+        resultHero.classList.add("tier-" + tier);
+        if (tier === "perfect") {
+          resultDeco.textContent = "✦ ✦ ✦";
+          resultTitle.textContent = "Victory!";
+          resultSub.textContent =
+            "Perfect — 100% correct, all green, all within 8 seconds.";
+        } else if (tier === "almost") {
+          resultDeco.textContent = "★ ★ ★";
+          resultTitle.textContent = "Almost!";
+          resultSub.textContent =
+            "100% correct with some yellow — speed up to go all green.";
+        } else {
+          resultDeco.textContent = "✗ ✗ ✗";
+          resultTitle.textContent = "Game Over";
+          resultSub.textContent =
+            "At least one wrong answer — keep practicing.";
+        }
+      }
+
+      function replayResultAnimations() {
+        const rt = resultTitle || screenResults.querySelector(".result-title");
+        const rs = resultSub || screenResults.querySelector(".result-sub");
+        if (rt) {
+          rt.style.animation = "none";
+        }
+        if (rs) {
+          rs.style.animation = "none";
+        }
+        if (resultsStatGrid) {
+          resultsStatGrid.classList.remove("victory-pop");
+        }
+        if (rt) void rt.offsetWidth;
+        if (rt) rt.style.animation = "";
+        if (rs) rs.style.animation = "";
+        if (resultsStatGrid) {
+          void resultsStatGrid.offsetWidth;
+          resultsStatGrid.classList.add("victory-pop");
+        }
+      }
+
       function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -779,15 +1268,13 @@
 
       function buildQuestions(m) {
         const pool = [];
-        for (let a = 1; a <= m; a++) {
-          for (let b = 1; b <= m; b++) {
-            pool.push({ a: a, b: b });
-          }
+        for (let k = 1; k <= TABLE_MAX; k++) {
+          pool.push({ a: m, b: k });
         }
         const list = [];
-        while (list.length < TOTAL) {
+        while (list.length < quizLength) {
           shuffleInPlace(pool);
-          for (let i = 0; i < pool.length && list.length < TOTAL; i++) {
+          for (let i = 0; i < pool.length && list.length < quizLength; i++) {
             list.push({ a: pool[i].a, b: pool[i].b });
           }
         }
@@ -856,8 +1343,14 @@
         answerDisplay.className = "answer-display pending";
         hintText.textContent = "";
         qIndexEl.textContent = String(qPos + 1);
+        questionText.classList.remove("q-pop");
+        void questionText.offsetWidth;
         questionText.textContent = currentA + " × " + currentB;
-        btnEnter.disabled = false;
+        questionText.classList.add("q-pop");
+        window.setTimeout(function () {
+          questionText.classList.remove("q-pop");
+        }, 400);
+        updateEnterEnabled();
         startQuestionTimer();
       }
 
@@ -867,11 +1360,22 @@
         return isNaN(n) ? null : n;
       }
 
+      function updateEnterEnabled() {
+        if (!btnEnter) return;
+        if (awaitingNext) {
+          btnEnter.disabled = true;
+          return;
+        }
+        btnEnter.disabled = inputStr.length === 0;
+      }
+
       function submitAnswer() {
         if (awaitingNext) return;
+        if (inputStr === "") return;
+        const userVal = parseAnswer();
+        if (userVal === null) return;
         const elapsed = Date.now() - questionStartMs;
         const correctVal = currentA * currentB;
-        const userVal = parseAnswer();
         const isCorrect = userVal === correctVal;
 
         cancelTimer();
@@ -906,6 +1410,9 @@
           outcome: outcome
         });
 
+        answerDisplay.classList.add("anim-" + outcome);
+        playFeedbackSound(outcome);
+
         advanceTimerId = setTimeout(function () {
           advanceTimerId = null;
           advance();
@@ -914,7 +1421,7 @@
 
       function advance() {
         qPos++;
-        if (qPos >= TOTAL) {
+        if (qPos >= quizLength) {
           finishQuiz();
           return;
         }
@@ -1076,6 +1583,8 @@
               ? Math.round(entry.accuracyPct) + "%"
               : "—";
           const sc = runScore(entry.green, entry.yellow);
+          const ql =
+            typeof entry.quizLength === "number" ? entry.quizLength : 40;
           tr.innerHTML =
             "<td>" +
             (idx + 1) +
@@ -1085,6 +1594,8 @@
             escapeHtml(entry.name || "—") +
             "</td><td class=\"num\">" +
             entry.maxFactor +
+            "</td><td class=\"num\">" +
+            ql +
             "</td><td class=\"num\">" +
             entry.green +
             "</td><td class=\"num\">" +
@@ -1125,11 +1636,15 @@
             typeof entry.accuracyPct === "number"
               ? Math.round(entry.accuracyPct) + "%"
               : "—";
+          const ql =
+            typeof entry.quizLength === "number" ? entry.quizLength : 40;
           tr.innerHTML =
             "<td>" +
             formatWhen(entry.ts) +
             "</td><td class=\"nm\">" +
             escapeHtml(entry.name || "—") +
+            "</td><td class=\"num\">" +
+            ql +
             "</td><td class=\"num\">" +
             entry.maxFactor +
             "</td><td class=\"num\">" +
@@ -1147,14 +1662,29 @@
 
       function finishQuiz() {
         cancelTimer();
+        stopBgMusic();
         unlockQuizScroll();
         screenQuiz.classList.add("hidden");
         screenResults.classList.remove("hidden");
+        const g = counts.green;
+        const y = counts.yellow;
+        const r = counts.red;
+        const tier = computeResultTier(g, y, r);
+        applyResultTier(tier);
+        replayResultAnimations();
+        if (tier === "perfect") {
+          burstConfetti();
+          playVictoryFanfare();
+        } else if (tier === "almost") {
+          playNeutralAlmostMusic();
+        } else {
+          playFailureWahWah();
+        }
         statGreen.textContent = String(counts.green);
         statYellow.textContent = String(counts.yellow);
         statRed.textContent = String(counts.red);
         const correct = counts.green + counts.yellow;
-        const accuracyPct = (correct / TOTAL) * 100;
+        const accuracyPct = (correct / quizLength) * 100;
         statAcc.textContent = Math.round(accuracyPct) + "%";
 
         const adv = computeAdvanced(questionLog, maxFactor);
@@ -1175,6 +1705,7 @@
           ts: Date.now(),
           name: name.slice(0, 32),
           maxFactor: maxFactor,
+          quizLength: quizLength,
           green: counts.green,
           yellow: counts.yellow,
           red: counts.red,
@@ -1203,6 +1734,7 @@
           advanceTimerId = null;
         }
         cancelTimer();
+        stopBgMusic();
         awaitingNext = false;
         screenQuiz.classList.add("hidden");
         screenSetup.classList.remove("hidden");
@@ -1217,7 +1749,10 @@
           return;
         }
         nameError.textContent = "";
+        const qlRaw = parseInt(quizLengthEl.value, 10);
+        quizLength = [10, 20, 30, 40].indexOf(qlRaw) >= 0 ? qlRaw : 40;
         maxFactor = parseInt(maxFactorEl.value, 10) || 12;
+        if (qTotalEl) qTotalEl.textContent = String(quizLength);
         questions = buildQuestions(maxFactor);
         qPos = 0;
         counts = { green: 0, yellow: 0, red: 0 };
@@ -1230,6 +1765,8 @@
         screenResults.classList.add("hidden");
         screenQuiz.classList.remove("hidden");
         lockQuizScroll();
+        initAudio();
+        startBgMusic();
         showQuestion();
       }
 
@@ -1238,18 +1775,21 @@
         if (inputStr.length >= 5) return;
         inputStr += d;
         answerDisplay.textContent = inputStr;
+        updateEnterEnabled();
       }
 
       function onBack() {
         if (awaitingNext) return;
         inputStr = inputStr.slice(0, -1);
         answerDisplay.textContent = inputStr === "" ? "\u00a0" : inputStr;
+        updateEnterEnabled();
       }
 
       function onClear() {
         if (awaitingNext) return;
         inputStr = "";
         answerDisplay.textContent = "\u00a0";
+        updateEnterEnabled();
       }
 
       numpad.addEventListener("click", function (e) {
