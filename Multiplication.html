@@ -783,7 +783,7 @@
 </head>
 <body>
   <h1>Multiplication quiz</h1>
-  <p class="sub">Pick how many questions to play. Each run uses one times table: <strong>Through N</strong> means N×1 up through N×12 (e.g. Through 1 is 1×1 … 1×12). You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
+  <p class="sub">Pick how many questions to play. <strong>Through N</strong> covers every <em>a × b</em> where <strong>a</strong> is 1 through N and <strong>b</strong> is 1 through 12 (e.g. Through 7 includes 3×8, 7×12, 5×4, …). You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
 
   <div id="screen-setup" class="panel">
     <label for="playerName">Your name (for the leaderboard)</label>
@@ -800,7 +800,7 @@
     </div>
     <label for="maxFactor">Times table</label>
     <div class="row">
-      <select id="maxFactor" aria-label="Times table: N×1 through N×12"></select>
+      <select id="maxFactor" aria-label="First factor 1 through N, second factor 1 through 12"></select>
     </div>
     <div class="section-title" style="margin-top: 16px;">Recent runs</div>
     <div id="setupHistoryWrap" class="lb-wrap history-panel">
@@ -1268,8 +1268,10 @@
 
       function buildQuestions(m) {
         const pool = [];
-        for (let k = 1; k <= TABLE_MAX; k++) {
-          pool.push({ a: m, b: k });
+        for (let a = 1; a <= m; a++) {
+          for (let b = 1; b <= TABLE_MAX; b++) {
+            pool.push({ a: a, b: b });
+          }
         }
         const list = [];
         while (list.length < quizLength) {
