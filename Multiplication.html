@@ -787,7 +787,7 @@
 
   <div id="screen-setup" class="panel">
     <label for="playerName">Your name (for the leaderboard)</label>
-    <input type="text" id="playerName" maxlength="32" autocomplete="nickname" placeholder="e.g. Alex" />
+    <input type="text" id="playerName" maxlength="32" autocomplete="nickname" value="Carter" placeholder="e.g. Alex" />
     <p class="field-error" id="nameError" aria-live="polite"></p>
     <label for="quizLength">Quiz length</label>
     <div class="row">
@@ -1702,7 +1702,7 @@
 
         renderFactorRows(maxFactor, adv.factorAsked, adv.factorRight);
 
-        const name = (playerNameEl.value || "").trim() || "Player";
+        const name = (playerNameEl.value || "").trim() || "Carter";
         const entry = {
           ts: Date.now(),
           name: name.slice(0, 32),
