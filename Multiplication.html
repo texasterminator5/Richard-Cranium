@@ -1286,9 +1286,10 @@
       let scrollLockY = 0;
 
       function lockQuizScroll() {
-        scrollLockY = window.scrollY || document.documentElement.scrollTop || 0;
+        scrollLockY = 0;
+        window.scrollTo(0, 0);
         document.documentElement.classList.add("quiz-open");
-        document.body.style.top = "-" + scrollLockY + "px";
+        document.body.style.top = "0px";
       }
 
       function unlockQuizScroll() {
@@ -1826,6 +1827,7 @@
       btnAgain.addEventListener("click", function () {
         screenResults.classList.add("hidden");
         screenSetup.classList.remove("hidden");
+        window.scrollTo(0, 0);
       });
 
       btnClearHistory.addEventListener("click", function () {
