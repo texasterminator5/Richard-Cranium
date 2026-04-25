@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#143252" />
-  <title>Multiplication Quiz</title>
+  <title>Math Facts Quiz</title>
   <style>
     :root {
       --bg: #0a2038;
@@ -782,8 +782,8 @@
   </style>
 </head>
 <body>
-  <h1>Multiplication quiz</h1>
-  <p class="sub">Pick how many questions to play. <strong>Through N</strong> covers every <em>a × b</em> where <strong>a</strong> is 1 through N and <strong>b</strong> is 1 through 12 (e.g. Through 7 includes 3×8, 7×12, 5×4, …). You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
+  <h1>Math facts quiz</h1>
+  <p class="sub">Pick a game mode and how many questions to play. In multiplication mode, <strong>Through N</strong> covers every <em>a × b</em> where <strong>a</strong> is 1 through N and <strong>b</strong> is 1 through 12. In division mode, questions use matching fact families (e.g. 56 ÷ 8). You have 8 seconds for a <em>green</em> score; correct but slower is <em>yellow</em>.</p>
 
   <div id="screen-setup" class="panel">
     <label for="playerName">Your name (for the leaderboard)</label>
@@ -796,6 +796,13 @@
         <option value="20">20 questions</option>
         <option value="30">30 questions</option>
         <option value="40" selected>40 questions</option>
+      </select>
+    </div>
+    <label for="gameMode">Game mode</label>
+    <div class="row">
+      <select id="gameMode" aria-label="Choose multiplication or division mode">
+        <option value="multiply" selected>Multiplication</option>
+        <option value="divide">Division</option>
       </select>
     </div>
     <label for="maxFactor">Times table</label>
@@ -811,6 +818,7 @@
             <tr>
               <th>When</th>
               <th>Name</th>
+              <th>Mode</th>
               <th class="num">Qs</th>
               <th class="num">Max</th>
               <th class="num">G/Y/R</th>
@@ -901,6 +909,7 @@
             <th>#</th>
             <th>When</th>
             <th>Name</th>
+            <th>Mode</th>
             <th class="num">Max</th>
             <th class="num">Qs</th>
             <th class="num">G</th>
@@ -928,6 +937,7 @@
       const TABLE_MAX = 12;
 
       const quizLengthEl = document.getElementById("quizLength");
+      const gameModeEl = document.getElementById("gameMode");
       const maxFactorEl = document.getElementById("maxFactor");
       const btnStart = document.getElementById("btnStart");
       const screenSetup = document.getElementById("screen-setup");
@@ -1025,11 +1035,14 @@
       });
 
       let quizLength = 40;
+      let gameMode = "multiply";
       let maxFactor = 12;
       let questions = [];
       let qPos = 0;
       let currentA = 0;
       let currentB = 0;
+      let currentPrompt = "0 × 0";
+      let currentCorrectAnswer = 0;
       let inputStr = "";
       let questionStartMs = 0;
       let rafId = 0;
@@ -1266,18 +1279,37 @@
         return arr;
       }
 
-      function buildQuestions(m) {
+      function buildQuestions(m, mode) {
         const pool = [];
         for (let a = 1; a <= m; a++) {
           for (let b = 1; b <= TABLE_MAX; b++) {
-            pool.push({ a: a, b: b });
+            if (mode === "divide") {
+              pool.push({
+                a: a,
+                b: b,
+                prompt: String(a * b) + " ÷ " + b,
+                answer: a
+              });
+            } else {
+              pool.push({
+                a: a,
+                b: b,
+                prompt: a + " × " + b,
+                answer: a * b
+              });
+            }
           }
         }
         const list = [];
         while (list.length < quizLength) {
           shuffleInPlace(pool);
           for (let i = 0; i < pool.length && list.length < quizLength; i++) {
-            list.push({ a: pool[i].a, b: pool[i].b });
+            list.push({
+              a: pool[i].a,
+              b: pool[i].b,
+              prompt: pool[i].prompt,
+              answer: pool[i].answer
+            });
           }
         }
         return list;
@@ -1341,6 +1373,8 @@
         const q = questions[qPos];
         currentA = q.a;
         currentB = q.b;
+        currentPrompt = q.prompt;
+        currentCorrectAnswer = q.answer;
         inputStr = "";
         answerDisplay.textContent = "\u00a0";
         answerDisplay.className = "answer-display pending";
@@ -1348,7 +1382,7 @@
         qIndexEl.textContent = String(qPos + 1);
         questionText.classList.remove("q-pop");
         void questionText.offsetWidth;
-        questionText.textContent = currentA + " × " + currentB;
+        questionText.textContent = currentPrompt;
         questionText.classList.add("q-pop");
         window.setTimeout(function () {
           questionText.classList.remove("q-pop");
@@ -1378,7 +1412,7 @@
         const userVal = parseAnswer();
         if (userVal === null) return;
         const elapsed = Date.now() - questionStartMs;
-        const correctVal = currentA * currentB;
+        const correctVal = currentCorrectAnswer;
         const isCorrect = userVal === correctVal;
 
         cancelTimer();
@@ -1588,6 +1622,7 @@
           const sc = runScore(entry.green, entry.yellow);
           const ql =
             typeof entry.quizLength === "number" ? entry.quizLength : 40;
+          const modeText = formatMode(entry.gameMode);
           tr.innerHTML =
             "<td>" +
             (idx + 1) +
@@ -1595,6 +1630,8 @@
             formatWhen(entry.ts) +
             "</td><td class=\"nm\">" +
             escapeHtml(entry.name || "—") +
+            "</td><td>" +
+            modeText +
             "</td><td class=\"num\">" +
             entry.maxFactor +
             "</td><td class=\"num\">" +
@@ -1641,11 +1678,14 @@
               : "—";
           const ql =
             typeof entry.quizLength === "number" ? entry.quizLength : 40;
+          const modeText = formatMode(entry.gameMode);
           tr.innerHTML =
             "<td>" +
             formatWhen(entry.ts) +
             "</td><td class=\"nm\">" +
             escapeHtml(entry.name || "—") +
+            "</td><td>" +
+            modeText +
             "</td><td class=\"num\">" +
             ql +
             "</td><td class=\"num\">" +
@@ -1707,6 +1747,7 @@
         const entry = {
           ts: Date.now(),
           name: name.slice(0, 32),
+          gameMode: gameMode,
           maxFactor: maxFactor,
           quizLength: quizLength,
           green: counts.green,
@@ -1754,9 +1795,11 @@
         nameError.textContent = "";
         const qlRaw = parseInt(quizLengthEl.value, 10);
         quizLength = [10, 20, 30, 40].indexOf(qlRaw) >= 0 ? qlRaw : 40;
+        gameMode =
+          gameModeEl && gameModeEl.value === "divide" ? "divide" : "multiply";
         maxFactor = parseInt(maxFactorEl.value, 10) || 12;
         if (qTotalEl) qTotalEl.textContent = String(quizLength);
-        questions = buildQuestions(maxFactor);
+        questions = buildQuestions(maxFactor, gameMode);
         qPos = 0;
         counts = { green: 0, yellow: 0, red: 0 };
         questionLog = [];
@@ -1793,6 +1836,10 @@
         inputStr = "";
         answerDisplay.textContent = "\u00a0";
         updateEnterEnabled();
+      }
+
+      function formatMode(mode) {
+        return mode === "divide" ? "Division" : "Multiplication";
       }
 
       numpad.addEventListener("click", function (e) {
